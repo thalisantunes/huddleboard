@@ -92,8 +92,11 @@ async def display(request):
         battery = None
     if battery is not None:
         request.app["state"]["battery"] = battery  # shown on the next render
-    fr = request.app["state"].get("frame") or await refresh(request.app)
-    buttons = request.app["state"]["valid"][fr["screen_id"]]
+    state = request.app["state"]
+    fr = state.get("frame")
+    if not fr or fr["screen_id"] not in state["valid"]:  # none yet, or its id was consumed by an action
+        fr = await refresh(request.app)
+    buttons = state["valid"][fr["screen_id"]]
     return web.json_response({
         "image_url": f"/api/image/{fr['hash']}.bin",
         "image_hash": fr["hash"],

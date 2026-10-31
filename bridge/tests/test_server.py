@@ -224,3 +224,15 @@ async def test_painel_failure_is_error(aiohttp_client, aiohttp_server, cfg):
     c = await aiohttp_client(server.make_app(dataclasses.replace(cfg, painel_url=f"http://127.0.0.1:{srv.port}")))
     m = await (await c.get("/api/model.json", headers=AUTH)).json()
     assert m["errors"] == ["painel"] and m["sessions"]["waiting"] == 0
+
+
+async def test_display_after_consumed_id_issues_new_id(client):
+    a = await _display(client, fresh=False)
+    r = await client.post("/api/action", json={"screen_id": a["screen_id"], "button": "A"}, headers=AUTH)
+    assert r.status == 200
+    r = await client.get("/api/display", headers=AUTH)
+    assert r.status == 200
+    b = await r.json()
+    assert b["screen_id"] != a["screen_id"]
+    c = await (await client.get("/api/display", headers=AUTH)).json()
+    assert c["screen_id"] == b["screen_id"]
