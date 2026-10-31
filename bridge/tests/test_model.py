@@ -1,4 +1,4 @@
-from kcdeck.model import build_screen, pick_buttons
+from crewmate.model import build_screen, pick_buttons
 
 
 def test_empty_inputs_do_not_break():

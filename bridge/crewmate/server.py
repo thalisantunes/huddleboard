@@ -21,7 +21,7 @@ from .model import build_screen, pick_buttons
 from .render import render, to_epd_bytes
 from .web import INDEX
 
-log = logging.getLogger("kcdeck")
+log = logging.getLogger("crewmate")
 _KEYS = ("status", "slots", "approvals", "tasks_summary", "usage")
 _LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 _VALID_IDS = 2  # current + previous screen_id (and image)

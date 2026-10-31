@@ -44,5 +44,5 @@ def load() -> Config:
         theme=e("THEME", "dark"),
     )
     if not cfg.device_tokens:
-        logging.getLogger("kcdeck").warning("DEVICE_TOKENS is empty: every device request will be rejected")
+        logging.getLogger("crewmate").warning("DEVICE_TOKENS is empty: every device request will be rejected")
     return cfg

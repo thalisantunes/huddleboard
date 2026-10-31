@@ -44,3 +44,4 @@ and does nothing else with it.
   `Cf-Access-Authenticated-User-Email` count as authenticated for `/`, `/preview.png`,
   `/api/model.json`, `/api/display` and `/api/action`. Set it only when the bridge is reachable
   solely through that proxy, since the header is otherwise forgeable. `GET /` is the live preview page.
+- The deployment unit name may differ from the project name.

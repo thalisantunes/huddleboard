@@ -12,7 +12,7 @@ import aiohttp
 
 from .config import Config
 
-log = logging.getLogger("kcdeck")
+log = logging.getLogger("crewmate")
 _TOKEN_TTL = 240  # seconds a minted token is reused; its link claim expires after 5 min
 _MINT_RETRY = 30  # seconds before retrying a failed mint, unless a request just got 401/403
 

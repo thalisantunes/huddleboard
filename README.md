@@ -1,4 +1,6 @@
-# kiro-crew-deck
+# crewmate
+
+*an e-paper desk companion for Kiro Crew*
 
 A desk e-paper gadget that monitors and controls a [KiroCrew](https://github.com/kirodotdev/KiroCrew) instance:
 pending approvals, agent slots, task counts and usage on a 7.3" 7-color screen, with three
@@ -23,7 +25,7 @@ cd bridge
 python -m venv .venv && . .venv/bin/activate
 pip install -e '.[dev]'
 pytest
-FIXTURES=1 DEVICE_TOKENS=dev python -m kcdeck   # http://127.0.0.1:5480/preview.png
+FIXTURES=1 DEVICE_TOKENS=dev python -m crewmate   # http://127.0.0.1:5480/preview.png
 ```
 
 Configuration and KiroCrew auth notes: [bridge/README.md](bridge/README.md).
@@ -31,7 +33,7 @@ Configuration and KiroCrew auth notes: [bridge/README.md](bridge/README.md).
 ## Try it without hardware
 
 ```sh
-cd bridge && FIXTURES=1 DEVICE_TOKENS=dev .venv/bin/python -m kcdeck &   # terminal 1
+cd bridge && FIXTURES=1 DEVICE_TOKENS=dev .venv/bin/python -m crewmate &   # terminal 1
 bridge/.venv/bin/python tools/device_sim.py --out frame.png               # one firmware cycle
 bridge/.venv/bin/python tools/device_sim.py --press A --out frame.png     # press button A first
 ```
@@ -58,3 +60,8 @@ A button with no action on the current screen is `"none"`; firmware must ignore 
 ## License
 
 MIT
+
+## Trademarks
+
+Kiro and Kiro Crew are trademarks of Amazon.com, Inc. or its affiliates. crewmate is an
+independent community project, not affiliated with or endorsed by Amazon or the Kiro team.

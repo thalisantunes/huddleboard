@@ -1,7 +1,7 @@
 import pytest
 
-from kcdeck import config
-from kcdeck.server import make_app
+from crewmate import config
+from crewmate.server import make_app
 
 
 @pytest.fixture

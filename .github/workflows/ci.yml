@@ -25,7 +25,7 @@ jobs:
       - run: pip install platformio==6.2.0
       - run: cp firmware/src/secrets.example.h firmware/src/secrets.h
       - run: pio run -d firmware -e heltec_v4 -e heltec_v4r8 -e firebeetle2_esp32s3
-      - run: firmware/tools/merge_bin.sh heltec_v4 kiro-crew-deck-heltec-v4
+      - run: firmware/tools/merge_bin.sh heltec_v4 crewmate-heltec-v4
       - uses: actions/upload-artifact@v4
         with:
           name: firmware-heltec_v4
@@ -33,12 +33,12 @@ jobs:
             firmware/.pio/build/heltec_v4/firmware.bin
             firmware/.pio/build/heltec_v4/bootloader.bin
             firmware/.pio/build/heltec_v4/partitions.bin
-            firmware/dist/kiro-crew-deck-heltec-v4.bin
+            firmware/dist/crewmate-heltec-v4.bin
       # On a v* tag, stage the merged image where docs/flash/manifest.json expects it.
       - if: startsWith(github.ref, 'refs/tags/v')
         run: |
           mkdir -p docs/flash/firmware
-          cp firmware/dist/kiro-crew-deck-heltec-v4.bin docs/flash/firmware/
+          cp firmware/dist/crewmate-heltec-v4.bin docs/flash/firmware/
       - if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
