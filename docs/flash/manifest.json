@@ -1,12 +1,12 @@
 {
-  "name": "crewmate",
+  "name": "huddleboard",
   "version": "0.1.0",
   "new_install_prompt_erase": false,
   "builds": [
     {
       "chipFamily": "ESP32-S3",
       "improv": true,
-      "parts": [{ "path": "firmware/crewmate-heltec-v4.bin", "offset": 0 }]
+      "parts": [{ "path": "firmware/huddleboard-heltec-v4.bin", "offset": 0 }]
     }
   ]
 }

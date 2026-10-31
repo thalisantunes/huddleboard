@@ -2,7 +2,7 @@ import dataclasses
 
 from aiohttp import web
 
-from crewmate.kirocrew import KiroCrew
+from huddleboard.kirocrew import KiroCrew
 
 SLOT_APPROVAL = {"kind": "slot", "id": "rq1", "slot": "coder 1", "request_id": "rq1", "request_mid": "m1",
                  "instance": "", "title": "t", "agent": "coder 1"}
@@ -106,7 +106,7 @@ def _token_server(state):
 
 
 async def test_token_minted_reused_and_sent_as_cookie(aiohttp_server, cfg, monkeypatch):
-    from crewmate import kirocrew
+    from huddleboard import kirocrew
     state = {"mints": 0, "accept": 1, "seen": []}
     kc = KiroCrew(_cfg(cfg, await aiohttp_server(_token_server(state)), internal_secret="sek"))
     t = [1000.0]

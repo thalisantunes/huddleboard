@@ -1,5 +1,5 @@
-from crewmate.model import Screen, build_screen
-from crewmate.render import render, to_epd_bytes
+from huddleboard.model import Screen, build_screen
+from huddleboard.render import render, to_epd_bytes
 
 
 def test_empty_screen_renders():
@@ -28,7 +28,7 @@ def test_error_state_and_long_text_render():
 
 def _fx(painel=None):
     import json
-    from crewmate.kirocrew import FIXTURE_DIR
+    from huddleboard.kirocrew import FIXTURE_DIR
     L = lambda n: json.loads((FIXTURE_DIR / n).read_text())
     raw = {"status": L("status.json"), "slots": L("slots.json"), "approvals": L("approvals.json"),
            "tasks_summary": L("tasks_summary.json"), "usage": L("usage.json")}
@@ -48,7 +48,7 @@ def test_dark_is_default_and_light_still_renders():
 
 def test_painel_on_counts_and_renders():
     import json
-    from crewmate.kirocrew import FIXTURE_DIR
+    from huddleboard.kirocrew import FIXTURE_DIR
     p = json.loads((FIXTURE_DIR / "painel_estado.json").read_text())
     s = build_screen(_fx(p), "12:00", 3.87, 180)
     assert s.sessions == {"waiting": 2, "working": 3, "stopped": 3, "unknown": 0}
@@ -59,8 +59,8 @@ def test_painel_on_counts_and_renders():
 
 
 def test_usage_line_omits_absent_parts():
-    from crewmate.model import _usage
-    from crewmate.render import _usage_line
+    from huddleboard.model import _usage
+    from huddleboard.render import _usage_line
     full = _usage({"billing": {"credits_used": 0.02, "credits_plan": 50, "percentage": 0, "cost_usd": 1.5,
                                "resets": "2026-11-01T00:00:00Z"}, "sessions": {"today": {"messages": 4}}})
     assert _usage_line(full) == "credits 0.02/50 \u00b7 resets 01/11"
@@ -77,7 +77,7 @@ def test_input_badge_changes_render():
 
 
 def _states():
-    from crewmate.model import build_screen as b
+    from huddleboard.model import build_screen as b
     return {
         "sleeping": b({"slots": [{"key": "a", "title": "Idle one"}]}),
         "working": b({"slots": [{"key": "a", "title": "Busy", "running": True}]}),
@@ -88,7 +88,7 @@ def _states():
 
 
 def test_mascot_states_and_renders():
-    from crewmate import mascot
+    from huddleboard import mascot
     for name, s in _states().items():
         assert mascot.pick_state(s) == name
         assert len(mascot.ART[name]) == 16 and all(len(r) == 16 for r in mascot.ART[name])
@@ -99,7 +99,7 @@ def test_mascot_states_and_renders():
 
 
 def test_mascot_state_priority():
-    from crewmate import mascot
+    from huddleboard import mascot
     s = build_screen({"approvals": [{"id": "1"}]}, errors=["usage"])
     assert mascot.pick_state(s) == "attention"  # a pending approval beats an unrelated error
     s = build_screen({"slots": [{"key": "a", "running": True}]}, errors=["usage"])

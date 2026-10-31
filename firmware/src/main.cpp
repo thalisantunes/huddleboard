@@ -1,4 +1,4 @@
-// crewmate firmware: wake, ask the bridge what to show, stream the image
+// huddleboard firmware: wake, ask the bridge what to show, stream the image
 // to the e-paper, sleep. Everything happens in setup(); loop() is never reached.
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -123,7 +123,7 @@ static void onImprovConnected(const char* ssid, const char* pass) {
 static void provision() {
   Serial.println("no Wi-Fi stored: waiting for Improv provisioning");
   ImprovWiFi improv(&Serial);
-  improv.setDeviceInfo(ImprovTypes::ChipFamily::CF_ESP32_S3, "crewmate", FW_VERSION, "crewmate");
+  improv.setDeviceInfo(ImprovTypes::ChipFamily::CF_ESP32_S3, "huddleboard", FW_VERSION, "huddleboard");
   improv.onImprovConnected(onImprovConnected);
   WiFi.mode(WIFI_STA);
   for (uint32_t t0 = millis(); millis() - t0 < PROVISION_MS;) {

@@ -1,4 +1,4 @@
-from crewmate import server
+from huddleboard import server
 
 AUTH = {"Authorization": "Bearer tok"}
 
@@ -67,7 +67,7 @@ async def test_concurrent_replay_executes_once(client):
 
 async def test_screen_id_follows_data_not_image(client, monkeypatch):
     import datetime as dt
-    from crewmate import server
+    from huddleboard import server
     now = [dt.datetime(2026, 1, 1, 12, 0)]
     monkeypatch.setattr(server, "datetime", type("D", (), {"now": staticmethod(lambda: now[0])}))
     a = await _display(client)
@@ -89,8 +89,8 @@ async def test_screen_id_follows_data_not_image(client, monkeypatch):
 
 async def test_missing_endpoint_marks_error(aiohttp_client, cfg, monkeypatch, tmp_path):
     import shutil
-    from crewmate import kirocrew
-    from crewmate.server import make_app
+    from huddleboard import kirocrew
+    from huddleboard.server import make_app
     shutil.copytree(kirocrew.FIXTURE_DIR, tmp_path / "f")
     (tmp_path / "f" / "approvals.json").unlink()
     monkeypatch.setattr(kirocrew, "FIXTURE_DIR", tmp_path / "f")
@@ -101,8 +101,8 @@ async def test_missing_endpoint_marks_error(aiohttp_client, cfg, monkeypatch, tm
 
 
 async def test_open_endpoints_need_auth_off_loopback(aiohttp_client, cfg, monkeypatch):
-    from crewmate import config
-    from crewmate.server import make_app
+    from huddleboard import config
+    from huddleboard.server import make_app
     monkeypatch.setenv("BIND", "0.0.0.0")
     c = await aiohttp_client(make_app(config.load()))
     assert (await c.get("/preview.png")).status == 401
@@ -189,7 +189,7 @@ async def test_ws_message_triggers_debounced_refresh(aiohttp_client, aiohttp_ser
 async def _painel_server(aiohttp_server, status=200):
     import json
     from aiohttp import web
-    from crewmate.kirocrew import FIXTURE_DIR
+    from huddleboard.kirocrew import FIXTURE_DIR
     body = (FIXTURE_DIR / "painel_estado.json").read_text()
 
     async def h(request):
@@ -256,7 +256,7 @@ CF = {"Cf-Access-Authenticated-User-Email": "a@b.c"}
 
 
 async def _proxy_client(aiohttp_client, cfg, monkeypatch, cidr):
-    from crewmate import config
+    from huddleboard import config
     monkeypatch.setenv("BIND", "0.0.0.0")
     monkeypatch.setenv("TRUSTED_PROXY_CIDR", cidr)
     return await aiohttp_client(server.make_app(config.load()))

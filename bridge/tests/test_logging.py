@@ -3,7 +3,7 @@ import logging
 
 from aiohttp import web
 
-from crewmate import server
+from huddleboard import server
 
 SECRETS = ("TOPSECRET123", "COOKIESECRET456", "OWNERTOKEN789", "mc_token_")
 

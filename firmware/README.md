@@ -58,7 +58,7 @@ The `firebeetle2_esp32s3` env is a generic ESP32-S3 example with the `config.h` 
 
 ## Flash pelo navegador
 
-`tools/merge_bin.sh` copies the merged image to `dist/crewmate-heltec-v4.bin` (offset 0, 16 MB layout, argument: env and output name).
+`tools/merge_bin.sh` copies the merged image to `dist/huddleboard-heltec-v4.bin` (offset 0, 16 MB layout, argument: env and output name).
 CI does this on every run and, on a `v*` tag, stages it in `docs/flash/firmware/` next to `manifest.json`.
 The page in `../docs/flash` uses ESP Web Tools: it needs Chrome or Edge (Web Serial) and HTTPS or localhost.
 For a local test, copy the image into `docs/flash/firmware/` and run `python3 -m http.server` inside `docs/flash`.

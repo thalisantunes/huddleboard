@@ -4,7 +4,7 @@
 # Usage: pio run -e heltec_v4 && tools/merge_bin.sh [env] [output-name]
 set -e
 env=${1:-heltec_v4}
-name=${2:-crewmate-heltec-v4}
+name=${2:-huddleboard-heltec-v4}
 here=$(cd "$(dirname "$0")/.." && pwd)
 mkdir -p "$here/dist"
 cp "$here/.pio/build/$env/firmware.factory.bin" "$here/dist/$name.bin"

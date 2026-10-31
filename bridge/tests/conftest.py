@@ -1,7 +1,7 @@
 import pytest
 
-from crewmate import config
-from crewmate.server import make_app
+from huddleboard import config
+from huddleboard.server import make_app
 
 
 @pytest.fixture

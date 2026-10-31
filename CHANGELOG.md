@@ -6,7 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Changed
-- Renamed to crewmate (Python package `crewmate`, distribution `crewmate-bridge`).
+- Renamed to huddleboard (Python package and distribution `huddleboard`).
 
 ## [0.1.1] - 2026-10-31
 
