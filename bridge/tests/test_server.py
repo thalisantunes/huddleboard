@@ -250,3 +250,35 @@ async def test_image_previous_hash_still_served(client, monkeypatch):
     assert a["image_hash"] != b["image_hash"]
     assert (await client.get(a["image_url"], headers=AUTH)).status == 200
     assert (await client.get(b["image_url"], headers=AUTH)).status == 200
+
+
+CF = {"Cf-Access-Authenticated-User-Email": "a@b.c"}
+
+
+async def _proxy_client(aiohttp_client, cfg, monkeypatch, cidr):
+    from kcdeck import config
+    monkeypatch.setenv("BIND", "0.0.0.0")
+    monkeypatch.setenv("TRUSTED_PROXY_CIDR", cidr)
+    return await aiohttp_client(server.make_app(config.load()))
+
+
+async def test_trusted_proxy_header_authenticates(aiohttp_client, cfg, monkeypatch):
+    c = await _proxy_client(aiohttp_client, cfg, monkeypatch, "127.0.0.0/8")
+    for path in ("/", "/preview.png", "/api/model.json", "/api/display"):
+        assert (await c.get(path, headers=CF)).status == 200, path
+        assert (await c.get(path)).status == 401, path
+    d = await (await c.get("/api/display", headers=CF)).json()
+    r = await c.post("/api/action", json={"screen_id": d["screen_id"], "button": "A"}, headers=CF)
+    assert r.status == 200
+    assert (await c.post("/api/action", json={"screen_id": "x", "button": "A"})).status == 401
+
+
+async def test_trusted_proxy_ignored_outside_cidr(aiohttp_client, cfg, monkeypatch):
+    c = await _proxy_client(aiohttp_client, cfg, monkeypatch, "10.0.0.0/8")
+    assert (await c.get("/api/model.json", headers=CF)).status == 401
+
+
+async def test_index_page_on_loopback(client):
+    r = await client.get("/")
+    body = await r.text()
+    assert r.status == 200 and "/preview.png" in body and "/api/action" in body

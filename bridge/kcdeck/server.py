@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import hmac
+import ipaddress
 import io
 import json
 import logging
@@ -17,6 +18,7 @@ from . import painel
 from .kirocrew import KiroCrew
 from .model import build_screen, pick_buttons
 from .render import render, to_epd_bytes
+from .web import INDEX
 
 log = logging.getLogger("kcdeck")
 _KEYS = ("status", "slots", "approvals", "tasks_summary", "usage")
@@ -72,7 +74,20 @@ async def refresh(app, battery=None) -> dict:
     return state["frame"]
 
 
+def _via_trusted_proxy(request) -> bool:
+    """Behind a proxy that already authenticates people (e.g. Cloudflare Access)."""
+    net = request.app["trusted_net"]
+    if net is None or not request.headers.get("Cf-Access-Authenticated-User-Email"):
+        return False
+    try:
+        return ipaddress.ip_address(request.remote) in net
+    except ValueError:
+        return False
+
+
 def _authed(request) -> bool:
+    if _via_trusted_proxy(request):
+        return True
     h = request.headers.get("Authorization", "")
     if not h.startswith("Bearer "):
         return False
@@ -161,6 +176,11 @@ async def model_json(request):
     return web.json_response(asdict(fr["screen"]))
 
 
+async def index(request):
+    _need_auth_unless_loopback(request)
+    return web.Response(text=INDEX, content_type="text/html", headers={"Cache-Control": "no-store"})
+
+
 async def healthz(request):
     return web.json_response({"ok": True})
 
@@ -223,8 +243,10 @@ def make_app(cfg=None) -> web.Application:
     app["cfg"] = cfg
     app["kc"] = KiroCrew(cfg)
     app["state"] = {}
+    app["trusted_net"] = ipaddress.ip_network(cfg.trusted_proxy_cidr, strict=False) if cfg.trusted_proxy_cidr else None
     app.cleanup_ctx.append(_background)
     app.add_routes([
+        web.get("/", index),
         web.get("/api/display", display),
         web.get("/api/image/{hash}.bin", image),
         web.post("/api/action", action),

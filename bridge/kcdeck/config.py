@@ -18,6 +18,7 @@ class Config:
     ws: bool
     painel_url: str
     painel_token: str
+    trusted_proxy_cidr: str
 
 
 def load() -> Config:
@@ -36,6 +37,7 @@ def load() -> Config:
         ws=e("KIROCREW_WS", "0") == "1",
         painel_url=e("PAINEL_TMUX_URL", "").rstrip("/"),
         painel_token=e("PAINEL_TMUX_TOKEN", ""),
+        trusted_proxy_cidr=e("TRUSTED_PROXY_CIDR", ""),
     )
     if not cfg.device_tokens:
         logging.getLogger("kcdeck").warning("DEVICE_TOKENS is empty: every device request will be rejected")

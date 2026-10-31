@@ -38,3 +38,7 @@ and does nothing else with it.
   and must fetch a new `/api/display`.
 - Whether the WebSocket accepts `X-Internal-Secret` alone as the owner is unconfirmed; if not,
   the bridge only sees what a non-owner sees and the poll loop is the fallback.
+- `TRUSTED_PROXY_CIDR` (empty = off): requests from a peer in this CIDR that carry
+  `Cf-Access-Authenticated-User-Email` count as authenticated for `/`, `/preview.png`,
+  `/api/model.json`, `/api/display` and `/api/action`. Set it only when the bridge is reachable
+  solely through that proxy, since the header is otherwise forgeable. `GET /` is the live preview page.
