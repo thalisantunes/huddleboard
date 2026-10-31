@@ -35,3 +35,8 @@ See [firmware/](firmware/).
 ## License
 
 MIT
+
+## Device buttons
+
+`GET /api/display` returns `"buttons": {"A": "approve", "B": "reject", "C": "stop"}`.
+A button with no action on the current screen is `"none"`; firmware must ignore it.

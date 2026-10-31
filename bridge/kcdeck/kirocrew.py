@@ -1,5 +1,6 @@
 """Async KiroCrew REST client. Schemas are unconfirmed, so callers must tolerate missing fields."""
 import json
+from urllib.parse import quote
 from pathlib import Path
 
 import aiohttp
@@ -74,8 +75,8 @@ class KiroCrew:
         return await self._get("usage")
 
     async def approve(self, approval_id: str, action: str):
-        """action: approve | reject | reject_once"""
-        return await self._post(f"/api/approvals/{approval_id}/{action}")
+        """action: approve | reject"""
+        return await self._post(f"/api/approvals/{quote(approval_id, safe='')}/{action}")
 
-    async def stop_slot(self, slot: str, force: bool = True):
-        return await self._post(f"/api/chat/slots/{slot}/stop?force={'true' if force else 'false'}")
+    async def stop_slot(self, slot: str):
+        return await self._post(f"/api/chat/slots/{quote(slot, safe='')}/stop?force=true")

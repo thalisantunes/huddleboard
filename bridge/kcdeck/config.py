@@ -1,3 +1,4 @@
+import logging
 import os
 from dataclasses import dataclass
 
@@ -17,7 +18,7 @@ class Config:
 
 def load() -> Config:
     e = os.environ.get
-    return Config(
+    cfg = Config(
         kirocrew_url=e("KIROCREW_URL", "http://127.0.0.1:5476").rstrip("/"),
         kirocrew_token=e("KIROCREW_TOKEN", ""),
         internal_secret=e("KIROCREW_INTERNAL_SECRET", ""),
@@ -28,3 +29,6 @@ def load() -> Config:
         bind=e("BIND", "127.0.0.1"),
         port=int(e("PORT", "5480")),
     )
+    if not cfg.device_tokens:
+        logging.getLogger("kcdeck").warning("DEVICE_TOKENS is empty: every device request will be rejected")
+    return cfg

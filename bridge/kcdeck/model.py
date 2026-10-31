@@ -11,6 +11,7 @@ class Screen:
     usage: dict = field(default_factory=lambda: {"today_usd": 0.0, "week_usd": 0.0, "tokens_today": 0})
     battery_v: float | None = None
     next_refresh_s: int = 300
+    errors: list = field(default_factory=list)  # endpoints that failed this cycle
 
 
 def _items(raw, key):
@@ -29,7 +30,7 @@ def _num(d, key, cast):
         return cast(0)
 
 
-def build_screen(raw: dict, updated_at: str = "", battery_v=None, next_refresh_s: int = 300) -> Screen:
+def build_screen(raw: dict, updated_at: str = "", battery_v=None, next_refresh_s: int = 300, errors=()) -> Screen:
     """raw keys: status, slots, approvals, tasks_summary, usage (each possibly empty)."""
     status = raw.get("status") or {}
     tasks = raw.get("tasks_summary") or {}
@@ -61,6 +62,7 @@ def build_screen(raw: dict, updated_at: str = "", battery_v=None, next_refresh_s
         },
         battery_v=battery_v,
         next_refresh_s=next_refresh_s,
+        errors=list(errors),
     )
 
 

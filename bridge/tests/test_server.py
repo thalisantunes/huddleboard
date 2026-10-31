@@ -30,3 +30,84 @@ async def test_preview_model_health(client):
     assert (await client.get("/healthz")).status == 200
     r = await client.get("/api/model.json", headers=AUTH)
     assert (await r.json())["crew_name"] == "Kiro Crew"
+
+
+async def _display(client):
+    return await (await client.get("/api/display", headers=AUTH)).json()
+
+
+async def test_action_replay_is_409(client):
+    d = await _display(client)
+    body = {"screen_id": d["screen_id"], "button": "A"}
+    assert (await client.post("/api/action", json=body, headers=AUTH)).status == 200
+    assert (await client.post("/api/action", json=body, headers=AUTH)).status == 409
+
+
+async def test_concurrent_replay_executes_once(client):
+    import asyncio
+    calls = []
+    kc = client.app["kc"]
+    orig = kc.approve
+
+    async def slow(*a):
+        calls.append(a)
+        await asyncio.sleep(0.05)
+        return await orig(*a)
+
+    kc.approve = slow
+    d = await _display(client)
+    body = {"screen_id": d["screen_id"], "button": "A"}
+    rs = await asyncio.gather(*[client.post("/api/action", json=body, headers=AUTH) for _ in range(2)])
+    assert sorted(r.status for r in rs) == [200, 409] and len(calls) == 1
+
+
+async def test_screen_id_stable_and_previous_tolerated(client, monkeypatch):
+    from kcdeck import server
+    monkeypatch.setattr(server, "datetime", type("D", (), {"now": staticmethod(lambda: __import__("datetime").datetime(2026, 1, 1, 12, 0))}))
+    a, b = await _display(client), await _display(client)
+    assert a["screen_id"] == b["screen_id"] and a["image_hash"] == b["image_hash"]
+    r = await client.get("/api/display?battery=3.5", headers=AUTH)
+    c = await r.json()
+    assert c["screen_id"] != a["screen_id"]
+    r = await client.post("/api/action", json={"screen_id": a["screen_id"], "button": "B"}, headers=AUTH)
+    assert r.status == 200  # previous id still honored
+
+
+async def test_missing_endpoint_marks_error(aiohttp_client, cfg, monkeypatch, tmp_path):
+    import shutil
+    from kcdeck import kirocrew
+    from kcdeck.server import make_app
+    shutil.copytree(kirocrew.FIXTURE_DIR, tmp_path / "f")
+    (tmp_path / "f" / "approvals.json").unlink()
+    monkeypatch.setattr(kirocrew, "FIXTURE_DIR", tmp_path / "f")
+    c = await aiohttp_client(make_app(cfg))
+    m = await (await c.get("/api/model.json", headers=AUTH)).json()
+    assert m["errors"] == ["approvals"] and m["approvals"] == []
+    d = await (await c.get("/api/display", headers=AUTH)).json()
+    assert d["buttons"]["A"] == "none" and d["refresh_rate"] == 300
+
+
+async def test_open_endpoints_need_auth_off_loopback(aiohttp_client, cfg, monkeypatch):
+    from kcdeck import config
+    from kcdeck.server import make_app
+    monkeypatch.setenv("BIND", "0.0.0.0")
+    c = await aiohttp_client(make_app(config.load()))
+    assert (await c.get("/preview.png")).status == 401
+    assert (await c.get("/api/model.json")).status == 401
+    assert (await c.get("/preview.png", headers=AUTH)).status == 200
+
+
+async def test_bad_body_400_and_upstream_502(client):
+    import aiohttp
+    r = await client.post("/api/action", data="nope", headers=AUTH)
+    assert r.status == 400
+    r = await client.post("/api/action", json={"x": 1}, headers=AUTH)
+    assert r.status == 400
+
+    async def boom(*a):
+        raise aiohttp.ClientError()
+
+    client.app["kc"].approve = boom
+    d = await _display(client)
+    r = await client.post("/api/action", json={"screen_id": d["screen_id"], "button": "A"}, headers=AUTH)
+    assert r.status == 502 and (await r.json()) == {"ok": False, "result": "upstream_error"}

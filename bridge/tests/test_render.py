@@ -18,3 +18,9 @@ def test_nibbles_in_range_with_content():
     assert len(data) == 192000
     assert all((b >> 4) <= 6 and (b & 15) <= 6 for b in data)
     assert any((b >> 4) == 4 for b in data)  # red present
+
+
+def test_error_state_and_long_text_render():
+    s = build_screen({"slots": [{"name": "n\n" * 50, "state": "idle", "task": "t " * 300}]}, "12:00", None, 300, ["approvals"])
+    s.crew_name = "x" * 300
+    assert len(to_epd_bytes(render(s))) == 192000
