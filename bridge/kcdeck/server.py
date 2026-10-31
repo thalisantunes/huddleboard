@@ -21,7 +21,8 @@ from .render import render, to_epd_bytes
 log = logging.getLogger("kcdeck")
 _KEYS = ("status", "slots", "approvals", "tasks_summary", "usage")
 _LOOPBACK = {"127.0.0.1", "::1", "localhost"}
-_VALID_IDS = 2  # current + previous screen_id
+_VALID_IDS = 2  # current + previous screen_id (and image)
+_WS_TYPES = {"approval", "approval_resolved", "slots", "slot_patch", "slot_clear", "chat_done"}
 DEBOUNCE = 2  # seconds to coalesce WS-triggered refreshes
 
 
@@ -62,6 +63,11 @@ async def refresh(app, battery=None) -> dict:
     valid[sid] = pick_buttons(screen)
     while len(valid) > _VALID_IDS:
         valid.popitem(last=False)
+    images = state.setdefault("images", OrderedDict())  # hash -> bytes; device may fetch the previous one
+    images.pop(h, None)
+    images[h] = data
+    while len(images) > _VALID_IDS:
+        images.popitem(last=False)
     state["frame"] = {"screen": screen, "bytes": data, "png": buf.getvalue(), "hash": h, "screen_id": sid, "data_key": dk}
     return state["frame"]
 
@@ -108,10 +114,10 @@ async def display(request):
 
 async def image(request):
     _need_auth(request)
-    fr = request.app["state"].get("frame")
-    if not fr or fr["hash"] != request.match_info["hash"]:
+    data = request.app["state"].get("images", {}).get(request.match_info["hash"])
+    if data is None:
         raise web.HTTPNotFound()
-    return web.Response(body=fr["bytes"], content_type="application/octet-stream")
+    return web.Response(body=data, content_type="application/octet-stream")
 
 
 async def action(request):
@@ -174,16 +180,26 @@ async def _poller(app):
             log.exception("refresh failed")
 
 
+def _ws_relevant(text) -> bool:
+    try:
+        return json.loads(text).get("type") in _WS_TYPES
+    except (ValueError, AttributeError):
+        return False
+
+
 async def _ws_loop(app):
     wake, delay = app["state"]["wake"], 5
     while True:
         try:
             async with app["kc"].ws_connect() as ws:
                 delay = 5
-                async for _ in ws:  # any message means "something changed"
-                    wake.set()
-        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-            log.warning("kirocrew ws: %r", e)
+                async for msg in ws:
+                    if msg.type == aiohttp.WSMsgType.TEXT and _ws_relevant(msg.data):
+                        wake.set()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            log.exception("kirocrew ws")
         await asyncio.sleep(delay)
         delay = min(delay * 2, 60)
 

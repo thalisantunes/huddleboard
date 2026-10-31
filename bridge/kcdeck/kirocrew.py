@@ -12,7 +12,6 @@ FIXTURE_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 
 _GET = {
     "status": ("/api/status", "status.json"),
-    "agents": ("/api/agents", "agents.json"),
     "slots": ("/api/chat/slots", "slots.json"),
     "approvals": ("/api/approvals", "approvals.json"),
     "tasks_summary": ("/api/tasks/summary", "tasks_summary.json"),
@@ -74,13 +73,10 @@ class KiroCrew:
     def ws_connect(self):
         """Async context manager for ws(s)://<KIROCREW_URL>/api/ws, same auth headers."""
         url = "ws" + self.cfg.kirocrew_url[4:] + "/api/ws"  # http->ws, https->wss
-        return self._http().ws_connect(url, headers=self._headers())
+        return self._http().ws_connect(url, headers=self._headers(), heartbeat=30)
 
     async def get_status(self):
         return await self._get("status")
-
-    async def get_agents(self):
-        return await self._get("agents")
 
     async def get_slots(self):
         return await self._get("slots")

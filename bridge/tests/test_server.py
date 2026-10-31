@@ -156,8 +156,10 @@ async def test_ws_message_triggers_debounced_refresh(aiohttp_client, aiohttp_ser
     async def ws_handler(request):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
+        await ws.send_str('{"type": "chat_segment"}')  # ignored
+        await ws.send_str("not json")  # ignored
         for _ in range(3):  # burst: must coalesce
-            await ws.send_str("{}")
+            await ws.send_str('{"type": "approval"}')
         await asyncio.sleep(0.5)
         return ws
 
@@ -236,3 +238,15 @@ async def test_display_after_consumed_id_issues_new_id(client):
     assert b["screen_id"] != a["screen_id"]
     c = await (await client.get("/api/display", headers=AUTH)).json()
     assert c["screen_id"] == b["screen_id"]
+
+
+async def test_image_previous_hash_still_served(client, monkeypatch):
+    import datetime as dt
+    now = [dt.datetime(2026, 1, 1, 12, 0)]
+    monkeypatch.setattr(server, "datetime", type("D", (), {"now": staticmethod(lambda: now[0])}))
+    a = await _display(client)
+    now[0] = dt.datetime(2026, 1, 1, 12, 1)  # same data, different clock -> new image hash
+    b = await _display(client)
+    assert a["image_hash"] != b["image_hash"]
+    assert (await client.get(a["image_url"], headers=AUTH)).status == 200
+    assert (await client.get(b["image_url"], headers=AUTH)).status == 200

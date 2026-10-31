@@ -31,3 +31,10 @@ restart, so the bridge rereads the file on 401/403 and retries once.
 stopping them is expected to work. If approvals are refused, plan B is to set
 `KIROCREW_COOKIE` to the owner's session cookie; the bridge then sends it as a `Cookie` header
 and does nothing else with it.
+
+## Notes
+
+- A consumed `screen_id` accepts no retry. After an upstream failure the device gets a 502
+  and must fetch a new `/api/display`.
+- Whether the WebSocket accepts `X-Internal-Secret` alone as the owner is unconfirmed; if not,
+  the bridge only sees what a non-owner sees and the poll loop is the fallback.
