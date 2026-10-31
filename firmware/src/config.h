@@ -7,22 +7,60 @@
 #include "secrets.example.h"
 #endif
 
-// Pins for DFRobot FireBeetle 2 ESP32-S3. The SPI bus uses the board defaults
-// (SCK GPIO17, MOSI GPIO15), which GxEPD2 picks via SPI.begin().
+// Pins. Defaults are for the DFRobot FireBeetle 2 ESP32-S3 (generic S3 example);
+// platformio.ini overrides them per board with -D flags.
+#ifndef EPD_SCK
+#define EPD_SCK   17  // board default SPI
+#endif
+#ifndef EPD_MOSI
+#define EPD_MOSI  15  // board default SPI
+#endif
+#ifndef EPD_CS
 #define EPD_CS    18  // D6
+#endif
+#ifndef EPD_DC
 #define EPD_DC     3  // D2
+#endif
+#ifndef EPD_RST
 #define EPD_RST   38  // D3
+#endif
+#ifndef EPD_BUSY
 #define EPD_BUSY  14  // D10, active low (low = busy)
+#endif
 
-// Buttons to GND, internal pull-up. Must be RTC-capable GPIOs (0..21) for ext1 wake.
+// Buttons to GND, internal pull-up. Wake from deep sleep (ext1) needs RTC GPIOs (0..21).
+#ifndef BTN_A
 #define BTN_A      7  // D5, approve
+#endif
+#ifndef BTN_B
 #define BTN_B      9  // D7, reject
+#endif
+#ifndef BTN_C
 #define BTN_C     12  // D12, stop
+#endif
+#ifndef BTN_C_WAKE
+#define BTN_C_WAKE 1  // 0 = button C does not wake the chip from deep sleep
+#endif
 
 // Battery sense: ADC pin and divider ratio (Vbat = Vpin * BAT_DIVIDER).
-// ASSUMPTION: 2:1 divider on A0 (GPIO4). Check the FireBeetle 2 S3 schematic.
-#define BAT_ADC_PIN 4
+// FireBeetle: ASSUMPTION 2:1 divider on A0 (GPIO4), check the schematic.
+#ifndef BAT_ADC
+#define BAT_ADC 4
+#endif
+#ifndef BAT_DIVIDER
 #define BAT_DIVIDER 2.0f
+#endif
+// Optional pin that must be driven to BAT_ADC_CTRL_ON_LEVEL while reading (Heltec: GPIO37).
+// #define BAT_ADC_CTRL <gpio>
+#ifndef BAT_ADC_CTRL_ON_LEVEL
+#define BAT_ADC_CTRL_ON_LEVEL 1
+#endif
+
+// Optional switched supply for the e-paper HAT (Heltec Vext). Undefined = HAT always powered.
+// #define VEXT <gpio>
+#ifndef VEXT_ON_LEVEL
+#define VEXT_ON_LEVEL 1
+#endif
 
 #define FW_VERSION "0.1.0"
 

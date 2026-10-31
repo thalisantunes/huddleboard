@@ -8,6 +8,7 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <GxEPD2_7C.h>  // pulls in the 7-colour driver headers
+#include <driver/gpio.h>
 #include <driver/rtc_io.h>
 #include <esp_sleep.h>
 #include <time.h>
@@ -33,8 +34,28 @@ static Preferences prefs;
 static WiFiClient plainClient;
 static WiFiClientSecure tlsClient;
 
+// Switched HAT supply: on while the panel is used, held off during deep sleep.
+static void vextOn() {
+#ifdef VEXT
+  gpio_hold_dis((gpio_num_t)VEXT);
+  pinMode(VEXT, OUTPUT);
+  digitalWrite(VEXT, VEXT_ON_LEVEL);
+  delay(20);
+#endif
+}
+
+static void vextOff() {
+#ifdef VEXT
+  pinMode(VEXT, OUTPUT);
+  digitalWrite(VEXT, !VEXT_ON_LEVEL);
+  gpio_hold_en((gpio_num_t)VEXT);
+  gpio_deep_sleep_hold_en();
+#endif
+}
+
 static void sleepFor(uint32_t seconds) {
   const uint8_t pins[] = {BTN_A, BTN_B, BTN_C};
+  const int nWake = BTN_C_WAKE ? 3 : 2;
   // Wait for all buttons released, otherwise a held button wakes us again at once.
   for (uint8_t p : pins) pinMode(p, INPUT_PULLUP);
   for (uint32_t t0 = millis(); millis() - t0 < 2000;) {
@@ -42,13 +63,15 @@ static void sleepFor(uint32_t seconds) {
     delay(10);
   }
   uint64_t mask = 0;
-  for (uint8_t p : pins) {
+  for (int i = 0; i < nWake; i++) {
+    uint8_t p = pins[i];
     rtc_gpio_init((gpio_num_t)p);
     rtc_gpio_set_direction((gpio_num_t)p, RTC_GPIO_MODE_INPUT_ONLY);
     rtc_gpio_pullup_en((gpio_num_t)p);
     rtc_gpio_pulldown_dis((gpio_num_t)p);
     mask |= 1ULL << p;
   }
+  vextOff();
   esp_sleep_enable_ext1_wakeup(mask, ESP_EXT1_WAKEUP_ANY_LOW);
   esp_sleep_enable_timer_wakeup((uint64_t)seconds * 1000000ULL);
   Serial.printf("sleep %us\n", (unsigned)seconds);
@@ -108,8 +131,17 @@ static bool openHttp(HTTPClient& http, const String& pathAndQuery) {
 }
 
 static float readBattery() {
-  analogSetPinAttenuation(BAT_ADC_PIN, ADC_11db);
-  return analogReadMilliVolts(BAT_ADC_PIN) * BAT_DIVIDER / 1000.0f;
+#ifdef BAT_ADC_CTRL
+  pinMode(BAT_ADC_CTRL, OUTPUT);
+  digitalWrite(BAT_ADC_CTRL, BAT_ADC_CTRL_ON_LEVEL);
+  delay(10);
+#endif
+  analogSetPinAttenuation(BAT_ADC, ADC_11db);
+  float v = analogReadMilliVolts(BAT_ADC) * BAT_DIVIDER / 1000.0f;
+#ifdef BAT_ADC_CTRL
+  digitalWrite(BAT_ADC_CTRL, !BAT_ADC_CTRL_ON_LEVEL);
+#endif
+  return v;
 }
 
 // Sends the pending button press. It is cleared once the bridge answered with
@@ -139,6 +171,8 @@ static bool showImage(const String& imagePath) {
     return false;
   }
 
+  vextOn();
+  SPI.begin(EPD_SCK, -1, EPD_MOSI, -1);  // GxEPD2's own SPI.begin() is then a no-op; CS is driven by GxEPD2
   epd.init(0);
   epd.setPaged();  // GxEPD2 "paged" mode: full-width strips written in order
   static uint8_t strip[STRIP_BYTES];

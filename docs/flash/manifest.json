@@ -6,7 +6,7 @@
     {
       "chipFamily": "ESP32-S3",
       "improv": true,
-      "parts": [{ "path": "firmware/kiro-crew-deck-firebeetle2.bin", "offset": 0 }]
+      "parts": [{ "path": "firmware/kiro-crew-deck-heltec-v4.bin", "offset": 0 }]
     }
   ]
 }

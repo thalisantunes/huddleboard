@@ -8,43 +8,55 @@ Display driver: GxEPD2 `GxEPD2_730c_ACeP_730` (800x480, 7 colours, no partial re
 Colour indices written by the bridge (0 black, 1 white, 2 green, 3 blue, 4 red,
 5 yellow, 6 orange) are already the panel's native values, so no conversion happens on the device.
 
-## Wiring (FireBeetle 2 ESP32-S3)
+## Wiring
 
-| Signal | GPIO | Board label | Note |
+Primary target: Heltec WiFi LoRa 32 V4 (env `heltec_v4`, or `heltec_v4r8` for the 8 MB PSRAM variant).
+Pins come from `-D` flags in `platformio.ini`; `src/config.h` holds the defaults (FireBeetle 2 ESP32-S3).
+
+| Signal | Heltec V4 GPIO | V4R8 GPIO | FireBeetle S3 (generic example) |
 |---|---|---|---|
-| EPD SCK (CLK) | 17 | SCK | board default SPI, fixed by `SPI.begin()` |
-| EPD MOSI (DIN) | 15 | MOSI | board default SPI |
-| EPD CS | 18 | D6 | |
-| EPD DC | 3 | D2 | |
-| EPD RST | 38 | D3 | |
-| EPD BUSY | 14 | D10 | low = busy |
-| EPD VCC / GND | 3V3 / GND | | HAT accepts 3.3 V or 5 V |
-| Button A (approve) | 7 | D5 | to GND, internal pull-up |
-| Button B (reject) | 9 | D7 | to GND |
-| Button C (stop) | 12 | D12 | to GND |
-| Battery sense | 4 | A0 | assumed 2:1 divider, see `config.h` |
+| EPD SCK (CLK) | 39 | 39 | 17 |
+| EPD MOSI (DIN) | 40 | 47 (not confirmed on header) | 15 |
+| EPD CS | 41 | 41 | 18 |
+| EPD DC | 42 | 42 | 3 |
+| EPD RST | 38 | 38 | 38 |
+| EPD BUSY (low = busy) | 34 | 34 | 14 |
+| HAT supply (Vext) | 36 | 40 | always on (3V3) |
+| Button A (approve) | 4 | 4 | 7 |
+| Button B (reject) | 6 | 6 | 9 |
+| Button C (stop) | 3, no wake | 3, no wake | 12 |
+| Battery ADC | 1 (+ ADC_Ctrl 37) | same | 4 (assumed 2:1) |
 
-All pins live in `src/config.h`. Buttons must stay on RTC GPIOs (0 to 21) to wake the chip.
-The battery pin and ratio are an assumption and must be checked against the board schematic.
+Notes for the Heltec:
+- Vext is driven on before the panel is used and held off during deep sleep. The datasheet says HIGH is on,
+  espboards.dev says LOW. Sources disagree: test on the bench and change `VEXT_ON_LEVEL`.
+- Battery: GPIO37 is driven HIGH, 10 ms later GPIO1 is read, then GPIO37 goes low. Vbat = Vadc x 4.9.
+- Only buttons A and B wake the chip from deep sleep. Button C (GPIO3, a strapping pin) is not an
+  ext1 source in this layout, so it only works while the chip is awake.
+- The OLED and the LoRa radio are never initialised. OLED_RST (GPIO21) is left floating.
+- The V4R8 keeps PSRAM disabled (the firmware does not use it). If its PSRAM is octal, GPIO33-37 may be taken
+  and BUSY 34 / ADC_Ctrl 37 would clash. Not verified.
+- The SPI bus is started with explicit pins before the panel init; CS is driven by GxEPD2.
+
+Buttons go to GND (internal pull-up). Wake needs RTC GPIOs (0 to 21).
 
 ## Build and flash
 
 ```sh
 python3 -m venv .venv && .venv/bin/pip install platformio
 cp src/secrets.example.h src/secrets.h   # then edit BRIDGE_URL and DEVICE_TOKEN
-.venv/bin/pio run -e firebeetle2_esp32s3
-.venv/bin/pio run -e firebeetle2_esp32s3 -t upload
+.venv/bin/pio run -e heltec_v4
+.venv/bin/pio run -e heltec_v4 -t upload
 .venv/bin/pio device monitor
 ```
 
 `secrets.h` is gitignored. An `https://` bridge URL is accepted but the certificate is not validated.
 
-The `heltec_wifi_lora_32_V3` env is a compile-only placeholder for the Heltec V4 (PlatformIO has no V4 board).
-Its pins are not remapped.
+The `firebeetle2_esp32s3` env is a generic ESP32-S3 example with the `config.h` default pins.
 
 ## Flash pelo navegador
 
-`tools/merge_bin.sh` copies the merged image to `dist/kiro-crew-deck-firebeetle2.bin` (offset 0, 16 MB layout).
+`tools/merge_bin.sh` copies the merged image to `dist/kiro-crew-deck-heltec-v4.bin` (offset 0, 16 MB layout, argument: env and output name).
 CI does this on every run and, on a `v*` tag, stages it in `docs/flash/firmware/` next to `manifest.json`.
 The page in `../docs/flash` uses ESP Web Tools: it needs Chrome or Edge (Web Serial) and HTTPS or localhost.
 For a local test, copy the image into `docs/flash/firmware/` and run `python3 -m http.server` inside `docs/flash`.
