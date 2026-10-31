@@ -3,3 +3,4 @@
 .pio-tmp/
 src/secrets.h
 src/idf_component.yml
+dist/

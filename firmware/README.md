@@ -42,6 +42,13 @@ cp src/secrets.example.h src/secrets.h   # then edit BRIDGE_URL and DEVICE_TOKEN
 The `heltec_wifi_lora_32_V3` env is a compile-only placeholder for the Heltec V4 (PlatformIO has no V4 board).
 Its pins are not remapped.
 
+## Flash pelo navegador
+
+`tools/merge_bin.sh` copies the merged image to `dist/kiro-crew-deck-firebeetle2.bin` (offset 0, 16 MB layout).
+CI does this on every run and, on a `v*` tag, stages it in `docs/flash/firmware/` next to `manifest.json`.
+The page in `../docs/flash` uses ESP Web Tools: it needs Chrome or Edge (Web Serial) and HTTPS or localhost.
+For a local test, copy the image into `docs/flash/firmware/` and run `python3 -m http.server` inside `docs/flash`.
+
 ## Wi-Fi provisioning
 
 With no stored credentials the device waits 5 minutes for Improv Wi-Fi over USB serial

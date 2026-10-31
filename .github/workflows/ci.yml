@@ -21,6 +21,7 @@ jobs:
       - run: pip install platformio
       - run: cp firmware/src/secrets.example.h firmware/src/secrets.h
       - run: pio run -d firmware -e firebeetle2_esp32s3
+      - run: firmware/tools/merge_bin.sh
       - uses: actions/upload-artifact@v4
         with:
           name: firmware-firebeetle2_esp32s3
@@ -28,3 +29,14 @@ jobs:
             firmware/.pio/build/firebeetle2_esp32s3/firmware.bin
             firmware/.pio/build/firebeetle2_esp32s3/bootloader.bin
             firmware/.pio/build/firebeetle2_esp32s3/partitions.bin
+            firmware/dist/kiro-crew-deck-firebeetle2.bin
+      # On a v* tag, stage the merged image where docs/flash/manifest.json expects it.
+      - if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          mkdir -p docs/flash/firmware
+          cp firmware/dist/kiro-crew-deck-firebeetle2.bin docs/flash/firmware/
+      - if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: flash-site
+          path: docs/flash
