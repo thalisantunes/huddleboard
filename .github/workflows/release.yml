@@ -1,0 +1,47 @@
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ hashFiles('firmware/platformio.ini') }}
+      - run: pip install platformio==6.2.0
+      # Release binaries are built with the example secrets; see docs/flash/index.html.
+      - run: cp firmware/src/secrets.example.h firmware/src/secrets.h
+      - run: pio run -d firmware -e heltec_v4
+      - run: firmware/tools/merge_bin.sh heltec_v4 huddleboard-heltec-v4
+      - name: Extract release notes
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          awk -v v="$v" '/^## \[/ { p = index($0, "[" v "]") > 0; next } p' CHANGELOG.md > notes.md
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" firmware/dist/huddleboard-heltec-v4.bin --title "$GITHUB_REF_NAME" --notes-file notes.md
+      - run: |
+          mkdir -p docs/flash/firmware
+          cp firmware/dist/huddleboard-heltec-v4.bin docs/flash/firmware/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/flash
+      - id: deploy
+        uses: actions/deploy-pages@v4
