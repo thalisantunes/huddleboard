@@ -1,12 +1,33 @@
 """Async KiroCrew REST client. Fields marked ? in the schema notes are unconfirmed: tolerate absence."""
+import asyncio
 import json
+import logging
 import os
+import time
 from urllib.parse import quote
 from pathlib import Path
 
 import aiohttp
 
 from .config import Config
+
+log = logging.getLogger("kcdeck")
+_TOKEN_TTL = 240  # seconds a minted token is reused; its link claim expires after 5 min
+_MINT_RETRY = 30  # seconds before retrying a failed mint, unless a request just got 401/403
+
+
+def _now() -> float:
+    return time.monotonic()
+
+
+def safe_error(e: BaseException) -> str:
+    """Loggable summary of an error. Never repr() aiohttp errors: ClientResponseError carries
+    request headers (X-Internal-Secret, Cookie, Authorization) and str() carries the URL query
+    (which holds the owner token)."""
+    if isinstance(e, aiohttp.ClientResponseError):
+        return f"{e.request_info.method} {e.request_info.url.path} status {e.status}"
+    return f"{type(e).__name__}"
+
 
 FIXTURE_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 
@@ -32,6 +53,47 @@ class KiroCrew:
         self.cfg = cfg
         self._secret = cfg.internal_secret or _read_secret_file()
         self._session = None
+        self._token = ""
+        self._minted = 0.0
+        self._mint_failed_at = None
+        self._lock = asyncio.Lock()
+        self.token_error = False  # last mint failed
+
+    async def _mint(self) -> bool:
+        """Owner token from /api/token/local, which wants the .local_secret value as X-Local-Secret."""
+        code = ""
+        try:
+            async with self._http().get(self.cfg.kirocrew_url + "/api/token/local", params={"ttl": "20h"},
+                                        headers={"X-Local-Secret": self._secret}) as r:
+                if r.status >= 400:
+                    try:
+                        code = str((await r.json(content_type=None)).get("code", ""))[:40]
+                    except (ValueError, AttributeError, aiohttp.ClientError):
+                        pass
+                    raise aiohttp.ClientResponseError(r.request_info, (), status=r.status)
+                token = (await r.json(content_type=None)).get("token")
+            if not isinstance(token, str) or not token:
+                raise ValueError("no token in response")
+        except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, AttributeError) as e:
+            log.warning("kirocrew token mint failed: %s%s", safe_error(e), f" code {code}" if code else "")
+            self._token, self._mint_failed_at, self.token_error = "", _now(), True
+            return False
+        self._token, self._minted, self._mint_failed_at, self.token_error = token, _now(), None, False
+        return True
+
+    async def _token_value(self, force=False) -> str:
+        def fresh():
+            return self._token and _now() - self._minted < _TOKEN_TTL
+
+        if fresh():
+            return self._token
+        if not force and self._mint_failed_at is not None and _now() - self._mint_failed_at < _MINT_RETRY:
+            return ""
+        async with self._lock:  # startup fires several requests at once; mint once
+            if fresh():
+                return self._token
+            await self._mint()
+        return self._token
 
     def _headers(self) -> dict:
         h = {}
@@ -41,11 +103,9 @@ class KiroCrew:
             h["Cookie"] = self.cfg.cookie
         return h
 
-    def _reload_secret(self) -> bool:
-        """The gateway generates a new secret on every restart. True if it changed."""
-        new = self.cfg.internal_secret or _read_secret_file()
-        changed, self._secret = new != self._secret, new
-        return changed
+    def _reload_secret(self):
+        """The gateway generates a new secret on every restart."""
+        self._secret = self.cfg.internal_secret or _read_secret_file()
 
     def _http(self) -> aiohttp.ClientSession:
         if self._session is None:
@@ -56,10 +116,17 @@ class KiroCrew:
         if self._session:
             await self._session.close()
 
-    async def _req(self, method: str, path: str, **kw):
+    async def _req(self, method: str, path: str, params=None, **kw):
         for attempt in (0, 1):
-            async with self._http().request(method, self.cfg.kirocrew_url + path, headers=self._headers(), **kw) as r:
-                if r.status in (401, 403) and attempt == 0 and self._reload_secret():
+            q = dict(params or {})
+            token = await self._token_value(force=attempt == 1)
+            if token:
+                q["token"] = token  # status/approvals/tasks/usage accept only cookie or ?token=
+            url = self.cfg.kirocrew_url + path
+            async with self._http().request(method, url, params=q or None, headers=self._headers(), **kw) as r:
+                if r.status in (401, 403) and attempt == 0:
+                    self._reload_secret()  # the gateway restarted: new secret, old token invalid
+                    self._token = ""
                     continue
                 r.raise_for_status()
                 return await r.json(content_type=None)

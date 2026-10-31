@@ -16,19 +16,12 @@ from aiohttp import web
 from . import config
 from . import painel
 from .kirocrew import KiroCrew
+from .kirocrew import safe_error as _safe
 from .model import build_screen, pick_buttons
 from .render import render, to_epd_bytes
 from .web import INDEX
 
 log = logging.getLogger("kcdeck")
-
-
-def _safe(e: BaseException) -> str:
-    """Loggable summary of an error. Never repr() aiohttp errors: ClientResponseError carries
-    request headers (X-Internal-Secret, Cookie, Authorization)."""
-    if isinstance(e, aiohttp.ClientResponseError):
-        return f"{e.request_info.method} {e.request_info.url.path} status {e.status}"
-    return f"{type(e).__name__}: {e}"
 _KEYS = ("status", "slots", "approvals", "tasks_summary", "usage")
 _LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 _VALID_IDS = 2  # current + previous screen_id (and image)
@@ -53,6 +46,8 @@ async def refresh(app, battery=None) -> dict:
             errors.append(k)
             r = {}
         raw[k] = r
+    if kc.token_error:
+        errors.append("token")
     screen = build_screen(raw, datetime.now().strftime("%H:%M"), battery, cfg.refresh, errors)
     if screen.approvals or (screen.sessions and screen.sessions["waiting"]):
         screen.next_refresh_s = cfg.refresh_urgent
