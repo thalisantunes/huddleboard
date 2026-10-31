@@ -2,6 +2,10 @@
 
 *an ambient status board for your AI agents — e-paper desk gadget today, Android TV next. Works with Kiro Crew and Kiro.*
 
+![huddleboard showing pending approvals](docs/images/board-attention.png)
+
+<img src="docs/images/board-idle.png" width="320" alt="idle board"> <img src="docs/images/board-light.png" width="320" alt="light theme">
+
 A desk e-paper gadget that monitors and controls a [KiroCrew](https://github.com/kirodotdev/KiroCrew) instance:
 pending approvals, agent slots, task counts and usage on a 7.3" 7-color screen, with three
 physical buttons to approve, reject or stop.
