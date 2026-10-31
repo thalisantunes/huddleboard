@@ -1,3 +1,5 @@
+from kcdeck import server
+
 AUTH = {"Authorization": "Bearer tok"}
 
 
@@ -32,7 +34,9 @@ async def test_preview_model_health(client):
     assert (await r.json())["crew_name"] == "Kiro Crew"
 
 
-async def _display(client):
+async def _display(client, fresh=True):
+    if fresh:  # display only reads the cache; force a recollect
+        await server.refresh(client.app)
     return await (await client.get("/api/display", headers=AUTH)).json()
 
 
@@ -121,3 +125,61 @@ async def test_bad_body_400_and_upstream_502(client):
     d = await _display(client)
     r = await client.post("/api/action", json={"screen_id": d["screen_id"], "button": "A"}, headers=AUTH)
     assert r.status == 502 and (await r.json()) == {"ok": False, "result": "upstream_error"}
+
+
+async def test_display_reads_cache_only(client):
+    calls = []
+    kc = client.app["kc"]
+    orig = kc._get
+
+    async def counted(name):
+        calls.append(name)
+        return await orig(name)
+
+    kc._get = counted
+    for _ in range(3):
+        assert (await client.get("/api/display", headers=AUTH)).status == 200
+    assert calls == []
+
+
+async def test_image_has_content_length_not_chunked(client):
+    d = await _display(client, fresh=False)
+    r = await client.get(d["image_url"], headers=AUTH)
+    assert r.headers["Content-Length"] == "192000"
+    assert "Transfer-Encoding" not in r.headers
+
+
+async def test_ws_message_triggers_debounced_refresh(aiohttp_client, aiohttp_server, cfg, monkeypatch):
+    import asyncio
+    import dataclasses
+    from aiohttp import web
+
+    async def ws_handler(request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        for _ in range(3):  # burst: must coalesce
+            await ws.send_str("{}")
+        await asyncio.sleep(0.5)
+        return ws
+
+    fake = web.Application()
+    fake.add_routes([web.get("/api/ws", ws_handler)])
+    srv = await aiohttp_server(fake)
+    monkeypatch.setattr(server, "DEBOUNCE", 0.05)
+    calls = []
+    orig = server.KiroCrew._get
+
+    async def counted(self, name):
+        calls.append(name)
+        return await orig(self, name)
+
+    monkeypatch.setattr(server.KiroCrew, "_get", counted)
+    c = dataclasses.replace(cfg, ws=True, poll_seconds=3600, kirocrew_url=f"http://127.0.0.1:{srv.port}")
+    await aiohttp_client(server.make_app(c))
+    assert len(calls) == 5  # startup render
+    for _ in range(40):
+        await asyncio.sleep(0.05)
+        if len(calls) >= 10:
+            break
+    await asyncio.sleep(0.2)
+    assert len(calls) == 10  # exactly one coalesced recollect

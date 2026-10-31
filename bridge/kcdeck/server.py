@@ -21,11 +21,14 @@ log = logging.getLogger("kcdeck")
 _KEYS = ("status", "slots", "approvals", "tasks_summary", "usage")
 _LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 _VALID_IDS = 2  # current + previous screen_id
+DEBOUNCE = 2  # seconds to coalesce WS-triggered refreshes
 
 
 async def refresh(app, battery=None) -> dict:
     """Fetch, build and cache the current frame. Failed endpoints are recorded in screen.errors."""
     cfg, kc, state = app["cfg"], app["kc"], app["state"]
+    if battery is None:
+        battery = state.get("battery")
     calls = [kc.get_status(), kc.get_slots(), kc.get_approvals(), kc.get_tasks_summary(), kc.get_usage()]
     results = await asyncio.gather(*calls, return_exceptions=True)
     raw, errors = {}, []
@@ -83,7 +86,9 @@ async def display(request):
         battery = float(request.query["battery"]) if "battery" in request.query else None
     except ValueError:
         battery = None
-    fr = await refresh(request.app, battery)
+    if battery is not None:
+        request.app["state"]["battery"] = battery  # shown on the next render
+    fr = request.app["state"].get("frame") or await refresh(request.app)
     buttons = request.app["state"]["valid"][fr["screen_id"]]
     return web.json_response({
         "image_url": f"/api/image/{fr['hash']}.bin",
@@ -147,7 +152,45 @@ async def healthz(request):
     return web.json_response({"ok": True})
 
 
-async def _close(app):
+async def _poller(app):
+    wake, poll = app["state"]["wake"], app["cfg"].poll_seconds
+    while True:
+        try:
+            await asyncio.wait_for(wake.wait(), poll)
+            await asyncio.sleep(DEBOUNCE)
+        except asyncio.TimeoutError:
+            pass
+        wake.clear()
+        try:
+            await refresh(app)
+        except Exception:
+            log.exception("refresh failed")
+
+
+async def _ws_loop(app):
+    wake, delay = app["state"]["wake"], 5
+    while True:
+        try:
+            async with app["kc"].ws_connect() as ws:
+                delay = 5
+                async for _ in ws:  # any message means "something changed"
+                    wake.set()
+        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+            log.warning("kirocrew ws: %r", e)
+        await asyncio.sleep(delay)
+        delay = min(delay * 2, 60)
+
+
+async def _background(app):
+    app["state"]["wake"] = asyncio.Event()
+    await refresh(app)  # first render before serving
+    tasks = [asyncio.create_task(_poller(app))]
+    if app["cfg"].ws:
+        tasks.append(asyncio.create_task(_ws_loop(app)))
+    yield
+    for t in tasks:
+        t.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
     await app["kc"].close()
 
 
@@ -157,7 +200,7 @@ def make_app(cfg=None) -> web.Application:
     app["cfg"] = cfg
     app["kc"] = KiroCrew(cfg)
     app["state"] = {}
-    app.on_cleanup.append(_close)
+    app.cleanup_ctx.append(_background)
     app.add_routes([
         web.get("/api/display", display),
         web.get("/api/image/{hash}.bin", image),

@@ -14,6 +14,8 @@ class Config:
     fixtures: bool
     bind: str
     port: int
+    poll_seconds: int
+    ws: bool
 
 
 def load() -> Config:
@@ -28,6 +30,8 @@ def load() -> Config:
         fixtures=e("FIXTURES", "0") == "1",
         bind=e("BIND", "127.0.0.1"),
         port=int(e("PORT", "5480")),
+        poll_seconds=int(e("POLL_SECONDS", "60")),
+        ws=e("KIROCREW_WS", "0") == "1",
     )
     if not cfg.device_tokens:
         logging.getLogger("kcdeck").warning("DEVICE_TOKENS is empty: every device request will be rejected")

@@ -56,6 +56,11 @@ class KiroCrew:
             r.raise_for_status()
             return await r.json(content_type=None)
 
+    def ws_connect(self):
+        """Async context manager for ws(s)://<KIROCREW_URL>/api/ws, same auth headers."""
+        url = "ws" + self.cfg.kirocrew_url[4:] + "/api/ws"  # http->ws, https->wss
+        return self._http().ws_connect(url)
+
     async def get_status(self):
         return await self._get("status")
 
