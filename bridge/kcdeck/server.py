@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import hmac
 import io
+import json
 import logging
 import uuid
 from collections import OrderedDict
@@ -45,14 +46,16 @@ async def refresh(app, battery=None) -> dict:
 
     valid = state.setdefault("valid", OrderedDict())  # screen_id -> buttons
     cur = state.get("frame")
-    if cur and cur["hash"] == h and cur["screen_id"] in valid:
+    # screen_id follows actionable data only, so the clock in the image does not invalidate it
+    dk = json.dumps([[a["id"] for a in screen.approvals], [[x["name"], x["state"]] for x in screen.slots]])
+    if cur and cur["data_key"] == dk and cur["screen_id"] in valid:
         sid = cur["screen_id"]
     else:
         sid = str(uuid.uuid4())
     valid[sid] = pick_buttons(screen)
     while len(valid) > _VALID_IDS:
         valid.popitem(last=False)
-    state["frame"] = {"screen": screen, "bytes": data, "png": buf.getvalue(), "hash": h, "screen_id": sid}
+    state["frame"] = {"screen": screen, "bytes": data, "png": buf.getvalue(), "hash": h, "screen_id": sid, "data_key": dk}
     return state["frame"]
 
 

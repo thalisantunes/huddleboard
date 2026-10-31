@@ -61,16 +61,26 @@ async def test_concurrent_replay_executes_once(client):
     assert sorted(r.status for r in rs) == [200, 409] and len(calls) == 1
 
 
-async def test_screen_id_stable_and_previous_tolerated(client, monkeypatch):
+async def test_screen_id_follows_data_not_image(client, monkeypatch):
+    import datetime as dt
     from kcdeck import server
-    monkeypatch.setattr(server, "datetime", type("D", (), {"now": staticmethod(lambda: __import__("datetime").datetime(2026, 1, 1, 12, 0))}))
-    a, b = await _display(client), await _display(client)
-    assert a["screen_id"] == b["screen_id"] and a["image_hash"] == b["image_hash"]
-    r = await client.get("/api/display?battery=3.5", headers=AUTH)
-    c = await r.json()
+    now = [dt.datetime(2026, 1, 1, 12, 0)]
+    monkeypatch.setattr(server, "datetime", type("D", (), {"now": staticmethod(lambda: now[0])}))
+    a = await _display(client)
+    now[0] = dt.datetime(2026, 1, 1, 12, 1)  # clock changes the image only
+    b = await _display(client)
+    assert a["image_hash"] != b["image_hash"] and a["screen_id"] == b["screen_id"]
+    # actionable data changes -> new id, previous still honored
+    orig = client.app["kc"].get_approvals
+
+    async def fewer():
+        return {"approvals": (await orig())["approvals"][:1]}
+
+    client.app["kc"].get_approvals = fewer
+    c = await _display(client)
     assert c["screen_id"] != a["screen_id"]
     r = await client.post("/api/action", json={"screen_id": a["screen_id"], "button": "B"}, headers=AUTH)
-    assert r.status == 200  # previous id still honored
+    assert r.status == 200
 
 
 async def test_missing_endpoint_marks_error(aiohttp_client, cfg, monkeypatch, tmp_path):
