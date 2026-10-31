@@ -28,6 +28,16 @@ FIXTURES=1 DEVICE_TOKENS=dev python -m kcdeck   # http://127.0.0.1:5480/preview.
 
 Configuration is via environment variables, see `bridge/kcdeck/config.py`.
 
+## Try it without hardware
+
+```sh
+cd bridge && FIXTURES=1 DEVICE_TOKENS=dev .venv/bin/python -m kcdeck &   # terminal 1
+bridge/.venv/bin/python tools/device_sim.py --out frame.png               # one firmware cycle
+bridge/.venv/bin/python tools/device_sim.py --press A --out frame.png     # press button A first
+```
+
+`tools/device_sim.py` makes the same calls as the firmware (state in `tools/.device_state.json`); `--loop` repeats every `refresh_rate`.
+
 ## Firmware
 
 See [firmware/](firmware/). Hardware assembly and BOM: [docs/hardware/assembly.md](docs/hardware/assembly.md).
