@@ -49,7 +49,7 @@ async def refresh(app, battery=None) -> dict:
     if kc.token_error:
         errors.append("token")
     screen = build_screen(raw, datetime.now().strftime("%H:%M"), battery, cfg.refresh, errors)
-    if screen.approvals or (screen.sessions and screen.sessions["waiting"]):
+    if screen.approvals or screen.waiting_input or (screen.sessions and screen.sessions["waiting"]):
         screen.next_refresh_s = cfg.refresh_urgent
     img = render(screen)
     data = to_epd_bytes(img)
@@ -60,7 +60,7 @@ async def refresh(app, battery=None) -> dict:
     valid = state.setdefault("valid", OrderedDict())  # screen_id -> buttons
     cur = state.get("frame")
     # screen_id follows actionable data only, so the clock in the image does not invalidate it
-    dk = json.dumps([[a["id"] for a in screen.approvals], [[x["name"], x["state"]] for x in screen.slots]])
+    dk = json.dumps([[a["id"] for a in screen.approvals], [[x["key"], x["state"]] for x in screen.slots]])
     if cur and cur["data_key"] == dk and cur["screen_id"] in valid:
         sid = cur["screen_id"]
     else:

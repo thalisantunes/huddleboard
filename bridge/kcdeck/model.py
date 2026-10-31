@@ -15,6 +15,7 @@ class Screen:
     next_refresh_s: int = 300
     errors: list = field(default_factory=list)  # endpoints that failed this cycle
     sessions: dict | None = None  # {waiting, working, stopped, unknown}; None = painel provider off
+    waiting_input: int = 0  # slots waiting for the human
     waiting: list = field(default_factory=list)  # up to 3 {name, minutes}, longest waiting first
 
 
@@ -50,6 +51,20 @@ def _slot_state(s):
         if s.get(flag):
             return name
     return "idle"
+
+
+_PRIO = {"approval": 0, "input": 1, "stopping": 2, "running": 3, "starting": 3, "compacting": 4, "interrupted": 5}
+_ACTIVE = ("approval", "running", "starting", "compacting")  # states where Stop makes sense
+
+
+def _slot_row(sl):
+    key = str(sl.get("key") or "?")
+    title = " ".join(_s(sl.get("title")).split())
+    ws = _s(sl.get("workspace"))
+    # title is the human label; keys share a long prefix, so fall back to the distinguishing tail
+    task = " ".join((_s(sl.get("prompt_preview")) or _s(sl.get("last_message"))).split())
+    return {"key": key, "name": title if len(title) >= 3 else key[-8:], "state": _slot_state(sl),
+            "task": task or ("" if ws == "default" else ws)}
 
 
 def _title(tool, tool_input):
@@ -126,18 +141,12 @@ def build_screen(raw: dict, updated_at: str = "", battery_v=None, next_refresh_s
             {"name": f"{w.get('sessao', '?')}/{w.get('nome', '?')}", "minutes": max(0, int((now - _num(w, "desde", float)) // 60))}
             for w in wins[:3]
         ]
+    slots = sorted((_slot_row(sl) for sl in _items(raw.get("slots"), "slots")), key=lambda s: _PRIO.get(s["state"], 6))
     return Screen(
         updated_at=updated_at,
         approvals=_approvals(raw.get("slots"), raw.get("approvals")),
-        slots=[
-            {
-                "name": str(sl.get("key") or "?"),
-                "state": _slot_state(sl),
-                # ?: no task field exists; show the project/workspace the slot works in
-                "task": _s(sl.get("project")) or _s(sl.get("workspace")),
-            }
-            for sl in _items(raw.get("slots"), "slots")
-        ],
+        slots=slots,
+        waiting_input=sum(1 for sl in slots if sl["state"] == "input"),
         # ?: "failed" is read from depth.by_state["FAILED"]; the state list is partly unconfirmed
         tasks={"running": _num(depth, "running", int), "queued": _num(depth, "queued", int),
                "failed": _num(_d(depth.get("by_state")), "FAILED", int)},
@@ -158,7 +167,7 @@ def pick_buttons(screen: Screen) -> dict:
         out["A"] = {"kind": "approve", "target_id": first["id"], "approval": first}
         out["B"] = {"kind": "reject", "target_id": first["id"], "approval": first}
     for s in screen.slots:
-        if s["state"] not in ("idle", "stopping"):
-            out["C"] = {"kind": "stop", "target_id": s["name"]}
+        if s["state"] in _ACTIVE:
+            out["C"] = {"kind": "stop", "target_id": s["key"]}
             break
     return out

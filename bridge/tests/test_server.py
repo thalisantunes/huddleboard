@@ -282,3 +282,15 @@ async def test_index_page_on_loopback(client):
     r = await client.get("/")
     body = await r.text()
     assert r.status == 200 and "/preview.png" in body and "/api/action" in body
+
+
+async def test_waiting_input_alone_is_urgent(client):
+    async def none():
+        return []
+
+    async def slots():
+        return [{"key": "s", "title": "Waiting one", "needs_input": True}]
+
+    kc = client.app["kc"]
+    kc.get_approvals, kc.get_slots = none, slots
+    assert (await _display(client))["refresh_rate"] == 180

@@ -9,7 +9,10 @@ BLACK, WHITE, GREEN, BLUE, RED, YELLOW, ORANGE = range(7)
 _RGB = [(0, 0, 0), (255, 255, 255), (0, 255, 0), (0, 0, 255), (255, 0, 0), (255, 255, 0), (255, 128, 0)]
 _FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 _BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-_GLYPH = {"idle": ("-", BLACK), "approval": ("!", RED), "input": ("?", ORANGE), "stopping": ("■", RED)}
+_GLYPH = {"idle": ("-", BLACK), "approval": ("!", RED), "input": ("!", RED), "stopping": ("■", RED)}
+
+
+_LABEL = {"input": "waiting input"}
 
 
 def _font(path, size):
@@ -68,6 +71,9 @@ def render(screen: Screen) -> Image.Image:
     failed = "approvals" in screen.errors or "slots" in screen.errors  # approvals come from both
     d.rectangle((0, 58, W, 90), fill=ORANGE if failed else RED if n else GREEN)
     d.text((16, 60), f"APPROVALS: {'?' if failed else n}", font=fb, fill=WHITE)
+    if screen.waiting_input:
+        d.rectangle((W - 200, 60, W - 10, 88), fill=ORANGE, outline=BLACK, width=2)
+        d.text((W - 190, 60), f"INPUT: {screen.waiting_input}", font=fb, fill=BLACK)
     y = 96
     for a in screen.approvals[:3]:
         line = f"{a['agent']}: {a['title']}" if a["agent"] else a["title"]
@@ -81,13 +87,13 @@ def render(screen: Screen) -> Image.Image:
     d.line((0, 206, W, 206), fill=BLACK, width=2)
     d.text((16, 212), "SLOTS", font=fb, fill=BLUE)
     half = screen.sessions is not None  # painel provider on: slots yield the right half
-    name_w, text_x, limit = (130, 190, 390) if half else (164, 220, W - 16)
+    name_w, text_x, limit = (150, 205, 390) if half else (230, 290, W - 16)
     y = 244
     for s in screen.slots[:5]:
         g, col = _GLYPH.get(s["state"], ("▶", GREEN))
         d.text((16, y), g, font=f, fill=col)
         d.text((48, y), _clip(d, s["name"], fbs, name_w), font=fbs, fill=BLACK)
-        d.text((text_x, y), _clip(d, f"{s['state']} {s['task']}".strip(), f, limit - text_x), font=f, fill=BLACK)
+        d.text((text_x, y), _clip(d, f"{_LABEL.get(s['state'], s['state'])} {s['task']}".strip(), f, limit - text_x), font=f, fill=BLACK)
         y += 28
     if half:
         ss = screen.sessions

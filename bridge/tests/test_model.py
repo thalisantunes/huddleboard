@@ -47,3 +47,25 @@ def test_tasks_and_usage_real_shapes():
     assert s.tasks == {"running": 2, "queued": 3, "failed": 1}
     assert s.usage == {"credits_used": 1.5, "credits_plan": 50.0, "percentage": 3.0, "cost_usd": None,
                        "resets": "2026-11-01T00:00:00Z", "msgs_today": 7}
+
+
+def test_slot_labels_priority_task_and_input_count():
+    slots = [
+        {"key": "slack_1793358208.441229", "title": "Check the 14900k", "running": True, "workspace": "default"},
+        {"key": "slack_1793324134.318149", "title": "hi", "needs_input": True, "workspace": "default",
+         "last_message": "  Which   one? "},
+        {"key": "slack_1793315164.791249", "title": "Gui, report", "waiting_for_input": True, "workspace": "ops",
+         "prompt_preview": "do the thing"},
+        {"key": "slack_1793294163.802569", "title": "Idle one", "workspace": "default"},
+    ]
+    s = build_screen({"slots": slots})
+    assert [x["state"] for x in s.slots] == ["input", "input", "running", "idle"]  # input first, idle last
+    assert s.waiting_input == 2
+    by_key = {x["key"][-4:]: x for x in s.slots}
+    assert by_key["1229"]["name"] == "Check the 14900k" and by_key["1229"]["task"] == ""  # "default" omitted
+    assert by_key["8149"]["name"] == slots[1]["key"][-8:]  # title too short: use the key tail
+    assert by_key["8149"]["task"] == "Which one?"
+    assert by_key["1249"]["task"] == "do the thing"
+    # Stop targets running work, never a slot that is only waiting for the human
+    assert pick_buttons(s)["C"]["target_id"] == slots[0]["key"]
+    assert "C" not in pick_buttons(build_screen({"slots": slots[1:3]}))

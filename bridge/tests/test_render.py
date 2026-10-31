@@ -41,7 +41,7 @@ def test_painel_off_render_is_unchanged():
     import hashlib
     s = build_screen(_fx(), "12:00", 3.87, 180)
     # sha1 of the painel-off render, re-recorded after the real-schema fixtures
-    assert hashlib.sha1(to_epd_bytes(render(s))).hexdigest() == "96ec08879f4e11646c8485b7fa0fcf97f83c23ed"
+    assert hashlib.sha1(to_epd_bytes(render(s))).hexdigest() == "bdbbe3f3b9ae08fbf5ca4188b3781ec75478d916"
 
 
 def test_painel_on_counts_and_renders():
@@ -64,3 +64,10 @@ def test_usage_line_omits_absent_parts():
     assert _usage_line(full) == "credits 0.02 / 50 (0%) \u00b7 $1.50 \u00b7 resets 01/11 \u00b7 4 msgs today"
     assert _usage_line(_usage({"billing": {"credits_used": 3}})) == "credits 3"
     assert _usage_line(_usage(None)) == "usage n/a"
+
+
+def test_input_badge_changes_render():
+    base = {"slots": [{"key": "a", "title": "Title A", "running": True}]}
+    waiting = {"slots": [{"key": "a", "title": "Title A", "needs_input": True}]}
+    assert to_epd_bytes(render(build_screen(base))) != to_epd_bytes(render(build_screen(waiting)))
+    assert any((b >> 4) == 6 for b in to_epd_bytes(render(build_screen(waiting))))  # orange badge

@@ -1,12 +1,59 @@
 [
- {"key": "main", "running": true, "stopping": false, "pending_approval": false, "pending_approval_info": null,
-  "needs_input": false, "queue_depth": 0, "project": "kiro-crew-deck", "served_model": "model-a"},
- {"key": "coder-1", "running": true, "stopping": false, "pending_approval": true, "needs_input": false,
-  "queue_depth": 1, "project": "billing-api",
-  "pending_approval_info": {"origin": "native", "tool": "Bash", "tool_input": "git push origin main",
-   "tool_kind": "shell", "request_id": "rq-4f21", "request_mid": "mid-9a77"}},
- {"key": "reviewer", "running": false, "stopping": false, "pending_approval": false, "pending_approval_info": null,
-  "needs_input": true, "queue_depth": 0, "project": "billing-api"},
- {"key": "scratch", "running": false, "stopping": false, "pending_approval": false, "pending_approval_info": null,
-  "needs_input": false, "queue_depth": 0}
+ {
+  "key": "main",
+  "running": true,
+  "stopping": false,
+  "pending_approval": false,
+  "pending_approval_info": null,
+  "needs_input": false,
+  "queue_depth": 0,
+  "served_model": "model-a",
+  "title": "Refactor billing API",
+  "last_message": "Updated the invoice totals and re-ran the suite",
+  "workspace": "default",
+  "prompt_preview": "Refactor the invoice totals module and keep the public API stable"
+ },
+ {
+  "key": "coder-1",
+  "running": true,
+  "stopping": false,
+  "pending_approval": true,
+  "needs_input": false,
+  "queue_depth": 1,
+  "pending_approval_info": {
+   "origin": "native",
+   "tool": "Bash",
+   "tool_input": "git push origin main",
+   "tool_kind": "shell",
+   "request_id": "rq-4f21",
+   "request_mid": "mid-9a77"
+  },
+  "title": "Fix login redirect loop",
+  "last_message": "Waiting on permission to push the branch",
+  "workspace": "default"
+ },
+ {
+  "key": "reviewer",
+  "running": false,
+  "stopping": false,
+  "pending_approval": false,
+  "pending_approval_info": null,
+  "needs_input": true,
+  "queue_depth": 0,
+  "title": "Review PR 42 feedback",
+  "last_message": "Which of the two approaches do you prefer?",
+  "workspace": "default"
+ },
+ {
+  "key": "scratch",
+  "running": false,
+  "stopping": false,
+  "pending_approval": false,
+  "pending_approval_info": null,
+  "needs_input": false,
+  "queue_depth": 0,
+  "title": "hi",
+  "last_message": "",
+  "workspace": "default"
+ }
 ]
