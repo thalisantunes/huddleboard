@@ -41,7 +41,7 @@ def test_painel_off_render_is_unchanged():
     import hashlib
     s = build_screen(_fx(), "12:00", 3.87, 180)
     # sha1 of the painel-off render, re-recorded after the real-schema fixtures
-    assert hashlib.sha1(to_epd_bytes(render(s))).hexdigest() == "bdbbe3f3b9ae08fbf5ca4188b3781ec75478d916"
+    assert hashlib.sha1(to_epd_bytes(render(s))).hexdigest() == "acfc2bcc5491fb8e1a749e1b8e9d22152946fe70"
 
 
 def test_painel_on_counts_and_renders():
@@ -68,6 +68,7 @@ def test_usage_line_omits_absent_parts():
 
 def test_input_badge_changes_render():
     base = {"slots": [{"key": "a", "title": "Title A", "running": True}]}
-    waiting = {"slots": [{"key": "a", "title": "Title A", "needs_input": True}]}
-    assert to_epd_bytes(render(build_screen(base))) != to_epd_bytes(render(build_screen(waiting)))
-    assert any((b >> 4) == 6 for b in to_epd_bytes(render(build_screen(waiting))))  # orange badge
+    waiting = {"slots": [{"key": "a", "title": "Title A", "needs_input": True, "last_activity_ts": 1000.0}]}
+    s = build_screen(waiting, now=1060.0)
+    assert to_epd_bytes(render(build_screen(base))) != to_epd_bytes(render(s))
+    assert any((b >> 4) == 6 for b in to_epd_bytes(render(s)))  # orange badge

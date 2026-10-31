@@ -1,5 +1,6 @@
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
 
 
 @dataclass
@@ -57,6 +58,18 @@ _PRIO = {"approval": 0, "input": 1, "stopping": 2, "running": 3, "starting": 3, 
 _ACTIVE = ("approval", "running", "starting", "compacting")  # states where Stop makes sense
 
 
+def _ts(v):
+    """Epoch seconds from a number or an ISO string (the real API sends ISO); None if unusable."""
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        return float(v) or None
+    if isinstance(v, str):
+        try:
+            return datetime.fromisoformat(v).timestamp()
+        except ValueError:
+            return None
+    return None
+
+
 def _slot_row(sl):
     key = str(sl.get("key") or "?")
     title = " ".join(_s(sl.get("title")).split())
@@ -64,6 +77,7 @@ def _slot_row(sl):
     # title is the human label; keys share a long prefix, so fall back to the distinguishing tail
     task = " ".join((_s(sl.get("prompt_preview")) or _s(sl.get("last_message"))).split())
     return {"key": key, "name": title if len(title) >= 3 else key[-8:], "state": _slot_state(sl),
+            "ts": _ts(sl.get("last_activity_ts")),
             "task": task or ("" if ws == "default" else ws)}
 
 
@@ -123,7 +137,8 @@ def _usage(raw):
     }
 
 
-def build_screen(raw: dict, updated_at: str = "", battery_v=None, next_refresh_s: int = 300, errors=()) -> Screen:
+def build_screen(raw: dict, updated_at: str = "", battery_v=None, next_refresh_s: int = 300, errors=(),
+                 now: float | None = None, input_recent_min: int = 30) -> Screen:
     """raw keys: status, slots, approvals, tasks_summary, usage (each possibly empty)."""
     depth = _d(_d(raw.get("tasks_summary")).get("depth"))
     sessions, waiting = None, []
@@ -141,12 +156,14 @@ def build_screen(raw: dict, updated_at: str = "", battery_v=None, next_refresh_s
             {"name": f"{w.get('sessao', '?')}/{w.get('nome', '?')}", "minutes": max(0, int((now - _num(w, "desde", float)) // 60))}
             for w in wins[:3]
         ]
+    now = time.time() if now is None else now
     slots = sorted((_slot_row(sl) for sl in _items(raw.get("slots"), "slots")), key=lambda s: _PRIO.get(s["state"], 6))
     return Screen(
         updated_at=updated_at,
         approvals=_approvals(raw.get("slots"), raw.get("approvals")),
         slots=slots,
-        waiting_input=sum(1 for sl in slots if sl["state"] == "input"),
+        # only recent input counts as urgent: old Slack threads can wait for a human for days
+        waiting_input=sum(1 for sl in slots if sl["state"] == "input" and sl["ts"] and now - sl["ts"] <= input_recent_min * 60),
         # ?: "failed" is read from depth.by_state["FAILED"]; the state list is partly unconfirmed
         tasks={"running": _num(depth, "running", int), "queued": _num(depth, "queued", int),
                "failed": _num(_d(depth.get("by_state")), "FAILED", int)},

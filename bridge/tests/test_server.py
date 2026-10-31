@@ -289,8 +289,13 @@ async def test_waiting_input_alone_is_urgent(client):
         return []
 
     async def slots():
-        return [{"key": "s", "title": "Waiting one", "needs_input": True}]
+        return [{"key": "s", "title": "Waiting one", "needs_input": True, "last_activity_ts": ts[0]}]
 
+    import time
+    ts = [time.time() - 60]
     kc = client.app["kc"]
     kc.get_approvals, kc.get_slots = none, slots
     assert (await _display(client))["refresh_rate"] == 180
+    ts[0] = time.time() - 3 * 3600  # stale input: listed, but not urgent
+    d = await _display(client)
+    assert d["refresh_rate"] == 300

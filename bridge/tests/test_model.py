@@ -60,7 +60,7 @@ def test_slot_labels_priority_task_and_input_count():
     ]
     s = build_screen({"slots": slots})
     assert [x["state"] for x in s.slots] == ["input", "input", "running", "idle"]  # input first, idle last
-    assert s.waiting_input == 2
+    assert s.waiting_input == 0  # no timestamps: nothing counts as recent
     by_key = {x["key"][-4:]: x for x in s.slots}
     assert by_key["1229"]["name"] == "Check the 14900k" and by_key["1229"]["task"] == ""  # "default" omitted
     assert by_key["8149"]["name"] == slots[1]["key"][-8:]  # title too short: use the key tail
@@ -69,3 +69,21 @@ def test_slot_labels_priority_task_and_input_count():
     # Stop targets running work, never a slot that is only waiting for the human
     assert pick_buttons(s)["C"]["target_id"] == slots[0]["key"]
     assert "C" not in pick_buttons(build_screen({"slots": slots[1:3]}))
+
+
+def test_only_recent_input_is_counted():
+    from datetime import datetime, timedelta, timezone
+    now = datetime(2026, 10, 31, 15, 0, tzinfo=timezone.utc)
+    iso = lambda mins: (now - timedelta(minutes=mins)).isoformat()
+    slots = [
+        {"key": "a", "needs_input": True, "last_activity_ts": iso(5)},  # ISO, recent
+        {"key": "b", "needs_input": True, "last_activity_ts": now.timestamp() - 29 * 60},  # epoch, recent
+        {"key": "c", "needs_input": True, "last_activity_ts": iso(31)},  # stale
+        {"key": "d", "needs_input": True, "last_activity_ts": "garbage"},
+        {"key": "e", "needs_input": True},
+        {"key": "f", "running": True, "last_activity_ts": iso(1)},  # not input
+    ]
+    s = build_screen({"slots": slots}, now=now.timestamp())
+    assert s.waiting_input == 2
+    assert [x["state"] for x in s.slots].count("input") == 5  # all still listed
+    assert build_screen({"slots": slots}, now=now.timestamp(), input_recent_min=60).waiting_input == 3

@@ -3,6 +3,28 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.1] - 2026-10-31
+
+### Added
+- Live preview web page at `/` (image, status line, A/B/C buttons that post the current action).
+- `TRUSTED_PROXY_CIDR`: trust an authenticating proxy such as Cloudflare Access for the web page
+  and its endpoints; devices keep using Bearer tokens.
+- Owner token minted from the local gateway endpoint and sent as a session cookie, which unlocks
+  status, approvals, tasks and usage.
+- `INPUT_RECENT_MINUTES` (default 30): only slots waiting for input within that window raise the
+  `INPUT: N` badge and the urgent 180 s refresh; older ones stay listed.
+
+### Changed
+- KiroCrew schema validated against a production gateway; the usage footer now shows credits,
+  plan, percentage, cost, reset date and messages today.
+- Slots show their title (key tail as fallback), are ordered by priority (approval, input, running,
+  compacting, idle) and show a task line from the last prompt or message. Stop (button C) targets
+  only slots that are actually working.
+- Heltec V4 is now the primary hardware target.
+
+### Fixed
+- Credentials (internal secret, cookies, owner token) are never written to logs.
+
 ## [0.1.0] - 2026-10-31
 
 ### Added

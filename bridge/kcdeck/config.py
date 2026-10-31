@@ -19,6 +19,7 @@ class Config:
     painel_url: str
     painel_token: str
     trusted_proxy_cidr: str
+    input_recent_minutes: int
 
 
 def load() -> Config:
@@ -38,6 +39,7 @@ def load() -> Config:
         painel_url=e("PAINEL_TMUX_URL", "").rstrip("/"),
         painel_token=e("PAINEL_TMUX_TOKEN", ""),
         trusted_proxy_cidr=e("TRUSTED_PROXY_CIDR", ""),
+        input_recent_minutes=int(e("INPUT_RECENT_MINUTES", "30")),
     )
     if not cfg.device_tokens:
         logging.getLogger("kcdeck").warning("DEVICE_TOKENS is empty: every device request will be rejected")

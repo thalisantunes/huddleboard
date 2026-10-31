@@ -48,7 +48,8 @@ async def refresh(app, battery=None) -> dict:
         raw[k] = r
     if kc.token_error:
         errors.append("token")
-    screen = build_screen(raw, datetime.now().strftime("%H:%M"), battery, cfg.refresh, errors)
+    screen = build_screen(raw, datetime.now().strftime("%H:%M"), battery, cfg.refresh, errors,
+                          input_recent_min=cfg.input_recent_minutes)
     if screen.approvals or screen.waiting_input or (screen.sessions and screen.sessions["waiting"]):
         screen.next_refresh_s = cfg.refresh_urgent
     img = render(screen)
