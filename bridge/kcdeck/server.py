@@ -21,6 +21,14 @@ from .render import render, to_epd_bytes
 from .web import INDEX
 
 log = logging.getLogger("kcdeck")
+
+
+def _safe(e: BaseException) -> str:
+    """Loggable summary of an error. Never repr() aiohttp errors: ClientResponseError carries
+    request headers (X-Internal-Secret, Cookie, Authorization)."""
+    if isinstance(e, aiohttp.ClientResponseError):
+        return f"{e.request_info.method} {e.request_info.url.path} status {e.status}"
+    return f"{type(e).__name__}: {e}"
 _KEYS = ("status", "slots", "approvals", "tasks_summary", "usage")
 _LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 _VALID_IDS = 2  # current + previous screen_id (and image)
@@ -41,7 +49,7 @@ async def refresh(app, battery=None) -> dict:
     raw, errors = {}, []
     for k, r in zip(keys, results):
         if isinstance(r, Exception):
-            log.warning("kirocrew %s failed: %r", k, r)
+            log.warning("kirocrew %s failed: %s", k, _safe(r))
             errors.append(k)
             r = {}
         raw[k] = r
@@ -159,7 +167,7 @@ async def action(request):
             await kc.decide(spec["approval"], kind)
             result = "approved" if kind == "approve" else "rejected"
     except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-        log.warning("kirocrew action failed: %r", e)
+        log.warning("kirocrew action failed: %s", _safe(e))
         return web.json_response({"ok": False, "result": "upstream_error"}, status=502)
     return web.json_response({"ok": True, "result": result})
 
@@ -218,6 +226,8 @@ async def _ws_loop(app):
                         wake.set()
         except asyncio.CancelledError:
             raise
+        except aiohttp.ClientError as e:
+            log.warning("kirocrew ws: %s", _safe(e))
         except Exception:
             log.exception("kirocrew ws")
         await asyncio.sleep(delay)
