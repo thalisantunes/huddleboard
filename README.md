@@ -50,3 +50,11 @@ MIT
 
 `GET /api/display` returns `"buttons": {"A": "approve", "B": "reject", "C": "stop"}`.
 A button with no action on the current screen is `"none"`; firmware must ignore it.
+
+## Roadmap
+
+- 0.2: runtime configuration (portal or custom Improv) and testing on real hardware.
+- Heltec V4 support and the 7.3" (E) Spectra 6 panel.
+- OTA firmware updates.
+- 3D-printed case.
+- Native KiroCrew integration: compact endpoint and approval event.
