@@ -31,7 +31,7 @@ async def test_preview_model_health(client):
     assert r.status == 200 and (await r.read())[:4] == b"\x89PNG"
     assert (await client.get("/healthz")).status == 200
     r = await client.get("/api/model.json", headers=AUTH)
-    assert (await r.json())["crew_name"] == "Kiro Crew"
+    assert (await r.json())["crew_name"] == "KiroCrew"
 
 
 async def _display(client, fresh=True):
@@ -51,14 +51,14 @@ async def test_concurrent_replay_executes_once(client):
     import asyncio
     calls = []
     kc = client.app["kc"]
-    orig = kc.approve
+    orig = kc.decide
 
     async def slow(*a):
         calls.append(a)
         await asyncio.sleep(0.05)
         return await orig(*a)
 
-    kc.approve = slow
+    kc.decide = slow
     d = await _display(client)
     body = {"screen_id": d["screen_id"], "button": "A"}
     rs = await asyncio.gather(*[client.post("/api/action", json=body, headers=AUTH) for _ in range(2)])
@@ -78,7 +78,7 @@ async def test_screen_id_follows_data_not_image(client, monkeypatch):
     orig = client.app["kc"].get_approvals
 
     async def fewer():
-        return {"approvals": (await orig())["approvals"][:1]}
+        return (await orig())[:1]
 
     client.app["kc"].get_approvals = fewer
     c = await _display(client)
@@ -96,9 +96,8 @@ async def test_missing_endpoint_marks_error(aiohttp_client, cfg, monkeypatch, tm
     monkeypatch.setattr(kirocrew, "FIXTURE_DIR", tmp_path / "f")
     c = await aiohttp_client(make_app(cfg))
     m = await (await c.get("/api/model.json", headers=AUTH)).json()
-    assert m["errors"] == ["approvals"] and m["approvals"] == []
-    d = await (await c.get("/api/display", headers=AUTH)).json()
-    assert d["buttons"]["A"] == "none" and d["refresh_rate"] == 300
+    assert m["errors"] == ["approvals"]
+    assert [a["kind"] for a in m["approvals"]] == ["slot"]  # slot approvals still come through
 
 
 async def test_open_endpoints_need_auth_off_loopback(aiohttp_client, cfg, monkeypatch):
@@ -121,7 +120,7 @@ async def test_bad_body_400_and_upstream_502(client):
     async def boom(*a):
         raise aiohttp.ClientError()
 
-    client.app["kc"].approve = boom
+    client.app["kc"].decide = boom
     d = await _display(client)
     r = await client.post("/api/action", json={"screen_id": d["screen_id"], "button": "A"}, headers=AUTH)
     assert r.status == 502 and (await r.json()) == {"ok": False, "result": "upstream_error"}
@@ -213,8 +212,8 @@ async def test_painel_waiting_alone_is_urgent(aiohttp_client, aiohttp_server, cf
     c = await aiohttp_client(server.make_app(dataclasses.replace(cfg, painel_url=f"http://127.0.0.1:{srv.port}")))
     c.app["state"]["frame"] = None
     async def none():
-        return {"approvals": []}
-    c.app["kc"].get_approvals = none
+        return []
+    c.app["kc"].get_approvals = c.app["kc"].get_slots = none
     d = await _display(c)
     assert d["refresh_rate"] == 180
 

@@ -1,5 +1,12 @@
-{"slots":[
- {"name":"main","state":"idle","task":""},
- {"name":"coder-1","state":"soft_pending","task":"refactor auth module"},
- {"name":"reviewer","state":"killing","task":"review PR #42"}
-]}
+[
+ {"key": "main", "running": true, "stopping": false, "pending_approval": false, "pending_approval_info": null,
+  "needs_input": false, "queue_depth": 0, "project": "kiro-crew-deck", "served_model": "model-a"},
+ {"key": "coder-1", "running": true, "stopping": false, "pending_approval": true, "needs_input": false,
+  "queue_depth": 1, "project": "billing-api",
+  "pending_approval_info": {"origin": "native", "tool": "Bash", "tool_input": "git push origin main",
+   "tool_kind": "shell", "request_id": "rq-4f21", "request_mid": "mid-9a77"}},
+ {"key": "reviewer", "running": false, "stopping": false, "pending_approval": false, "pending_approval_info": null,
+  "needs_input": true, "queue_depth": 0, "project": "billing-api"},
+ {"key": "scratch", "running": false, "stopping": false, "pending_approval": false, "pending_approval_info": null,
+  "needs_input": false, "queue_depth": 0}
+]

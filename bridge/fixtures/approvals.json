@@ -1,4 +1,6 @@
-{"approvals":[
- {"id":"ap_101","title":"Bash: git push origin main","agent":"coder-1"},
- {"id":"ap_102","title":"Edit: deploy/prod.yml","agent":"main"}
-]}
+[
+ {"id": "ap-7f3a", "instance": "9c1e5b0a7d3f4c2e8a6b1d0f3e5c7a92", "source": "cron", "tool": "Edit",
+  "tool_input": "deploy/prod.yml", "tool_purpose": "nightly config sync", "slot": "cron:nightly", "ts": 1730000000.0},
+ {"id": "ap-8c10", "instance": "2b7d4e1a9c3f4a5d8e6b0c1f7a3d5e90", "source": "subagent", "tool": "Bash",
+  "tool_input": "rm -rf build/", "tool_purpose": "clean build dir", "slot": "coder-1", "ts": 1730000100.0}
+]

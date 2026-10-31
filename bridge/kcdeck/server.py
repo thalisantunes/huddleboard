@@ -132,7 +132,7 @@ async def action(request):
             await kc.stop_slot(spec["target_id"])
             result = "stopped"
         else:
-            await kc.approve(spec["target_id"], kind)
+            await kc.decide(spec["approval"], kind)
             result = "approved" if kind == "approve" else "rejected"
     except (aiohttp.ClientError, asyncio.TimeoutError) as e:
         log.warning("kirocrew action failed: %r", e)

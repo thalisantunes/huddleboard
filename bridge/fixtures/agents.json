@@ -1,1 +1,3 @@
-{"agents":[{"name":"planner"},{"name":"coder"},{"name":"reviewer"}]}
+[{"name": "planner", "scope": "global", "kiro_agent": "planner", "avatar": {}, "owns_mate_file": true},
+ {"name": "coder", "scope": "project", "kiro_agent": "coder", "avatar": {}, "owns_mate_file": true},
+ {"name": "reviewer", "scope": "global", "kiro_agent": null, "avatar": {}, "owns_mate_file": false}]

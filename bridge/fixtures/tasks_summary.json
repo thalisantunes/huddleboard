@@ -1,1 +1,4 @@
-{"running":2,"queued":3,"failed":1}
+{"generated_at": 1730000200.0, "available": true,
+ "depth": {"by_state": {"RUNNING": 2, "QUEUED": 3, "FAILED": 1}, "queued": 3, "waiting": 0, "recovering": 0, "running": 2, "total": 6},
+ "oldest_wait_secs": 42.0, "lanes": {}, "degrade_reason": null, "adaptive": null, "slots": [], "waiting": [],
+ "recovering": {"tasks": [], "task_attempts": 0, "slots": [], "ladder": []}, "stalled": {}, "counts": {}, "stall_after_secs": null}

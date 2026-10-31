@@ -26,7 +26,7 @@ pytest
 FIXTURES=1 DEVICE_TOKENS=dev python -m kcdeck   # http://127.0.0.1:5480/preview.png
 ```
 
-Configuration is via environment variables, see `bridge/kcdeck/config.py`.
+Configuration and KiroCrew auth notes: [bridge/README.md](bridge/README.md).
 
 ## Try it without hardware
 

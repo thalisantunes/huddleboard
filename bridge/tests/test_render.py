@@ -10,9 +10,9 @@ def test_empty_screen_renders():
 
 def test_nibbles_in_range_with_content():
     s = build_screen({
-        "approvals": [{"id": "1", "title": "x" * 200, "agent": "a"}] * 5,
-        "slots": [{"name": "n", "state": st, "task": "t"} for st in ("idle", "soft_pending", "killing", "busy")],
-        "tasks_summary": {"failed": 2},
+        "approvals": [{"id": "1", "tool": "x" * 200, "source": "a"}] * 5,
+        "slots": [{"key": "n", "stopping": True}, {"key": "m", "needs_input": True}, {"key": "k", "running": True, "project": "p"}, {"key": "i"}],
+        "tasks_summary": {"depth": {"by_state": {"FAILED": 2}}},
     }, "12:00", 3.87)
     data = to_epd_bytes(render(s))
     assert len(data) == 192000
@@ -21,7 +21,7 @@ def test_nibbles_in_range_with_content():
 
 
 def test_error_state_and_long_text_render():
-    s = build_screen({"slots": [{"name": "n\n" * 50, "state": "idle", "task": "t " * 300}]}, "12:00", None, 300, ["approvals"])
+    s = build_screen({"slots": [{"key": "n\n" * 50, "project": "t " * 300}]}, "12:00", None, 300, ["approvals"])
     s.crew_name = "x" * 300
     assert len(to_epd_bytes(render(s))) == 192000
 
@@ -40,8 +40,8 @@ def _fx(painel=None):
 def test_painel_off_render_is_unchanged():
     import hashlib
     s = build_screen(_fx(), "12:00", 3.87, 180)
-    # sha1 recorded before the painel provider existed
-    assert hashlib.sha1(to_epd_bytes(render(s))).hexdigest() == "43a8193faa43fd95a3ec78b6685e486e6d7cdcd7"
+    # sha1 of the painel-off render, re-recorded after the real-schema fixtures
+    assert hashlib.sha1(to_epd_bytes(render(s))).hexdigest() == "b7752817997746b18e9a4a915dc109a704a69845"
 
 
 def test_painel_on_counts_and_renders():

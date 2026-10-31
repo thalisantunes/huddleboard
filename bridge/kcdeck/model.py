@@ -6,10 +6,11 @@ from dataclasses import dataclass, field
 class Screen:
     crew_name: str = "KiroCrew"
     updated_at: str = ""
-    approvals: list = field(default_factory=list)  # {id, title, agent}
+    # approval: {id, kind slot|state, slot, request_id, request_mid, instance, title, agent}
+    approvals: list = field(default_factory=list)
     slots: list = field(default_factory=list)  # {name, state, task}
     tasks: dict = field(default_factory=lambda: {"running": 0, "queued": 0, "failed": 0})
-    usage: dict = field(default_factory=lambda: {"today_usd": 0.0, "week_usd": 0.0, "tokens_today": 0})
+    usage: dict = field(default_factory=lambda: {"credits": 0.0, "turns": 0, "window_days": 0})
     battery_v: float | None = None
     next_refresh_s: int = 300
     errors: list = field(default_factory=list)  # endpoints that failed this cycle
@@ -33,11 +34,72 @@ def _num(d, key, cast):
         return cast(0)
 
 
+def _d(x):
+    return x if isinstance(x, dict) else {}
+
+
+def _s(x):
+    return x if isinstance(x, str) else ""
+
+
+def _slot_state(s):
+    # The API has no single state enum, only booleans; first match wins.
+    for flag, name in (("stopping", "stopping"), ("pending_approval", "approval"), ("needs_input", "input"),
+                       ("waiting_for_input", "input"), ("compacting", "compacting"), ("interrupted", "interrupted"),
+                       ("preparing", "starting"), ("wake_starting", "starting"), ("running", "running")):
+        if s.get(flag):
+            return name
+    return "idle"
+
+
+def _title(tool, tool_input):
+    tool, tool_input = _s(tool), _s(tool_input)
+    return f"{tool}: {tool_input}" if tool and tool_input else tool or tool_input or "approval"
+
+
+def _approvals(slots_raw, approvals_raw):
+    """Slot approvals (pending_approval_info) first, then state approvals from /api/approvals."""
+    out = []
+    for s in _items(slots_raw, "slots"):
+        info = s.get("pending_approval_info")
+        if not (s.get("pending_approval") and isinstance(info, dict)):
+            continue
+        slot = str(info.get("slot") or s.get("key") or "")
+        native = info.get("origin") == "native"
+        out.append({
+            "id": str(info.get("request_id" if native else "id") or ""),
+            "kind": "slot" if native else "state",  # coordinator approvals are decided via /api/approvals
+            "slot": slot,
+            "request_id": str(info.get("request_id") or ""),
+            "request_mid": str(info.get("request_mid") or ""),
+            "instance": str(info.get("instance") or ""),
+            "title": _title(info.get("tool"), info.get("tool_input")),
+            "agent": slot,
+        })
+    seen = {(a["kind"], a["id"]) for a in out}
+    for a in _items(approvals_raw, "approvals"):
+        key = ("state", str(a.get("id") or ""))
+        if key in seen:
+            continue
+        out.append({
+            "id": key[1], "kind": "state", "slot": str(a.get("slot") or ""), "request_id": "", "request_mid": "",
+            "instance": str(a.get("instance") or ""), "title": _title(a.get("tool"), a.get("tool_input")),
+            "agent": str(a.get("source") or ""),
+        })
+    return out
+
+
+def _usage(raw):
+    # ?: the exact /api/usage envelope is unconfirmed; accept a bare row, a list of rows or {"rows": [...]}.
+    rows = [raw] if isinstance(raw, dict) and "credits" in raw else _items(raw, "rows")
+    window = _num(_d(raw), "window_days", int) or (_num(rows[0], "window_days", int) if rows else 0)
+    return {"credits": sum(_num(r, "credits", float) for r in rows),
+            "turns": sum(_num(r, "turns", int) for r in rows), "window_days": window}
+
+
 def build_screen(raw: dict, updated_at: str = "", battery_v=None, next_refresh_s: int = 300, errors=()) -> Screen:
     """raw keys: status, slots, approvals, tasks_summary, usage (each possibly empty)."""
-    status = raw.get("status") or {}
-    tasks = raw.get("tasks_summary") or {}
-    usage = raw.get("usage") or {}
+    depth = _d(_d(raw.get("tasks_summary")).get("depth"))
     sessions, waiting = None, []
     if "painel" in raw:  # present (even empty) means the provider is enabled
         p = raw["painel"] if isinstance(raw["painel"], dict) else {}
@@ -54,30 +116,21 @@ def build_screen(raw: dict, updated_at: str = "", battery_v=None, next_refresh_s
             for w in wins[:3]
         ]
     return Screen(
-        crew_name=str(status.get("name") or status.get("crew") or "KiroCrew"),
         updated_at=updated_at,
-        approvals=[
-            {
-                "id": str(a.get("id", "")),
-                "title": str(a.get("title") or a.get("summary") or a.get("tool") or "approval"),
-                "agent": str(a.get("agent") or a.get("agent_name") or ""),
-            }
-            for a in _items(raw.get("approvals"), "approvals")
-        ],
+        approvals=_approvals(raw.get("slots"), raw.get("approvals")),
         slots=[
             {
-                "name": str(s.get("name") or s.get("slot") or s.get("id") or "?"),
-                "state": str(s.get("state") or "idle"),
-                "task": str(s.get("task") or s.get("current_task") or ""),
+                "name": str(sl.get("key") or "?"),
+                "state": _slot_state(sl),
+                # ?: no task field exists; show the project/workspace the slot works in
+                "task": _s(sl.get("project")) or _s(sl.get("workspace")),
             }
-            for s in _items(raw.get("slots"), "slots")
+            for sl in _items(raw.get("slots"), "slots")
         ],
-        tasks={k: _num(tasks, k, int) for k in ("running", "queued", "failed")},
-        usage={
-            "today_usd": _num(usage, "today_usd", float),
-            "week_usd": _num(usage, "week_usd", float),
-            "tokens_today": _num(usage, "tokens_today", int),
-        },
+        # ?: "failed" is read from depth.by_state["FAILED"]; the state list is partly unconfirmed
+        tasks={"running": _num(depth, "running", int), "queued": _num(depth, "queued", int),
+               "failed": _num(_d(depth.get("by_state")), "FAILED", int)},
+        usage=_usage(raw.get("usage")),
         battery_v=battery_v,
         next_refresh_s=next_refresh_s,
         errors=list(errors),
@@ -90,11 +143,11 @@ def pick_buttons(screen: Screen) -> dict:
     """Map A/B/C to the action each button triggers for what is on this screen."""
     out = {}
     if screen.approvals:
-        first = screen.approvals[0]["id"]
-        out["A"] = {"kind": "approve", "target_id": first}
-        out["B"] = {"kind": "reject", "target_id": first}
+        first = screen.approvals[0]
+        out["A"] = {"kind": "approve", "target_id": first["id"], "approval": first}
+        out["B"] = {"kind": "reject", "target_id": first["id"], "approval": first}
     for s in screen.slots:
-        if s["state"] not in ("idle", "killing"):
+        if s["state"] not in ("idle", "stopping"):
             out["C"] = {"kind": "stop", "target_id": s["name"]}
             break
     return out

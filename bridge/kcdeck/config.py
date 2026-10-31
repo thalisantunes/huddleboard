@@ -6,8 +6,8 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Config:
     kirocrew_url: str
-    kirocrew_token: str
     internal_secret: str
+    cookie: str
     device_tokens: frozenset
     refresh: int
     refresh_urgent: int
@@ -24,8 +24,8 @@ def load() -> Config:
     e = os.environ.get
     cfg = Config(
         kirocrew_url=e("KIROCREW_URL", "http://127.0.0.1:5476").rstrip("/"),
-        kirocrew_token=e("KIROCREW_TOKEN", ""),
         internal_secret=e("KIROCREW_INTERNAL_SECRET", ""),
+        cookie=e("KIROCREW_COOKIE", ""),  # plan B if the internal secret cannot approve
         device_tokens=frozenset(t.strip() for t in e("DEVICE_TOKENS", "").split(",") if t.strip()),
         refresh=int(e("REFRESH_SECONDS", "300")),
         refresh_urgent=int(e("REFRESH_SECONDS_URGENT", "180")),

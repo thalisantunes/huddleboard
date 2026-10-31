@@ -7,7 +7,7 @@ BLACK, WHITE, GREEN, BLUE, RED, YELLOW, ORANGE = range(7)
 _RGB = [(0, 0, 0), (255, 255, 255), (0, 255, 0), (0, 0, 255), (255, 0, 0), (255, 255, 0), (255, 128, 0)]
 _FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 _BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-_GLYPH = {"idle": ("-", BLACK), "soft_pending": ("?", ORANGE), "killing": ("■", RED)}
+_GLYPH = {"idle": ("-", BLACK), "approval": ("!", RED), "input": ("?", ORANGE), "stopping": ("■", RED)}
 
 
 def _font(path, size):
@@ -44,7 +44,7 @@ def render(screen: Screen) -> Image.Image:
 
     # block 1: approvals
     n = len(screen.approvals)
-    failed = "approvals" in screen.errors
+    failed = "approvals" in screen.errors or "slots" in screen.errors  # approvals come from both
     d.rectangle((0, 58, W, 90), fill=ORANGE if failed else RED if n else GREEN)
     d.text((16, 60), f"APPROVALS: {'?' if failed else n}", font=fb, fill=WHITE)
     y = 96
@@ -95,7 +95,8 @@ def render(screen: Screen) -> Image.Image:
     u = screen.usage
     nxt = f"next {screen.next_refresh_s}s"
     nw = d.textlength(nxt, font=fs)
-    left = f"today ${u['today_usd']:.2f}   7d ${u['week_usd']:.2f}   {u['tokens_today']} tok"
+    win = f" / {u['window_days']}d" if u["window_days"] else ""
+    left = f"credits {u['credits']:.1f}{win}   {u['turns']} turns"
     d.text((16, 440), _clip(d, left, fs, W - 48 - nw), font=fs, fill=BLACK)
     d.text((W - 16 - nw, 440), nxt, font=fs, fill=BLACK)
     return img

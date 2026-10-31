@@ -1,1 +1,5 @@
-{"today_usd":4.27,"week_usd":31.9,"tokens_today":1284500}
+{"window_days": 7,
+ "rows": [
+  {"category": "chat", "channel": "dashboard", "credits": 38.25, "turns": 88, "peak_pct": 61.0, "span_days": 7, "window_days": 7},
+  {"category": "cron", "channel": "cron", "credits": 12.5, "turns": 31, "peak_pct": 20.0, "span_days": 7, "window_days": 7}
+ ]}

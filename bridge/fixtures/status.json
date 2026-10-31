@@ -1,1 +1,4 @@
-{"name":"Kiro Crew","version":"1.0"}
+{"uptime_secs": 86400, "messages_received": 1280, "version": "1.0.0", "platform": "linux",
+ "gateway_rss_mb": 412, "yolo": false, "yolo_active": false, "yolo_expires_at": "",
+ "yolo_remaining_secs": -1, "yolo_until_shutdown": false, "disabled_approval_modes": [],
+ "cpu_count": 8, "mem_total_gb": 16}
