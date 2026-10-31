@@ -27,7 +27,7 @@ Pins come from `firmware/src/config.h`. Items marked "to confirm" were not verif
 | RST | 38 | D3 | |
 | BUSY | 14 | D10 | low = busy |
 
-Power: the Waveshare wiki and product page state a 3.3 V / 5 V HAT with an onboard level translator. Neither page mentions a power switch or a 0.47 ohm setting, so none is documented here. Check the driver board version printed under its name: versions before V2.1 only support 3.3 V, and 3.3 V is what this build uses.
+Power: the Waveshare wiki and product page state a 3.3 V / 5 V HAT with an onboard level translator. Neither page mentions a power switch or a 0.47 ohm setting, so none is documented here. Check the driver board version printed under its name: versions before V2.1 only support 3.3 V (NOT CONFIRMED: second-hand, from the Waveshare product page summary in the hardware research, not checked on the board), and 3.3 V is what this build uses.
 
 ## Battery
 
@@ -80,7 +80,7 @@ The refresh is about 77% of the consumption, so the interval matters more than s
 Saving tips:
 - Use the longest interval you can accept. The panel requires at least 180 s between refreshes.
 - Skip the refresh when the image hash is unchanged (the firmware already does this).
-- Cut the LP jumper on the board and measure sleep current.
+- Cut the LP jumper on the board and measure sleep current (NOT CONFIRMED: the jumper is mentioned for the FireBeetle 2 ESP32-E in a user forum thread; check the S3 board before cutting).
 - Optionally switch panel power with a MOSFET during sleep (as other frame projects do). Not implemented here.
 
 ## Known unknowns

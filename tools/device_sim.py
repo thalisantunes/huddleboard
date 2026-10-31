@@ -33,17 +33,21 @@ def unpack(data, out):
 def cycle(args):
     state = json.loads(STATE.read_text()) if STATE.exists() else {}
     if args.press:
-        action = state.get("buttons", {}).get(args.press)
-        if action == "none":
-            print(f"button {args.press} is 'none' on this screen: not posting")
-        elif state.get("screen_id"):
-            try:
-                r = call(args, "/api/action", {"screen_id": state["screen_id"], "button": args.press})
-                print(f"action {args.press} -> {r.status} {r.read().decode()}")
-            except urllib.error.HTTPError as e:
-                print(f"action {args.press} -> {e.code} {e.read().decode()}")
+        if state.get("screen_id") and state.get("buttons", {}).get(args.press) != "none":
+            state["pending"] = {"screen_id": state["screen_id"], "button": args.press}
         else:
-            print("no saved screen_id: not posting")
+            print(f"button {args.press}: no screen_id or action is 'none', not posting")
+    pending = state.get("pending")
+    if pending:
+        try:
+            r = call(args, "/api/action", pending)
+            print(f"action {pending['button']} -> {r.status} {r.read().decode()}")
+            state.pop("pending")
+        except urllib.error.HTTPError as e:  # bridge answered: drop it, like the firmware
+            print(f"action {pending['button']} -> {e.code} {e.read().decode()}")
+            state.pop("pending")
+        except OSError as e:  # network error: keep it for the next cycle
+            print(f"action {pending['button']} failed ({e}), kept pending")
     doc = json.load(call(args, f"/api/display?battery={args.battery}"))
     if doc["image_hash"] != state.get("image_hash"):
         r = call(args, doc["image_url"])
@@ -54,9 +58,12 @@ def cycle(args):
         print(f"new image {doc['image_hash']} -> {args.out}")
     else:
         print("image unchanged")
-    STATE.write_text(json.dumps({"image_hash": doc["image_hash"], "screen_id": doc["screen_id"], "buttons": doc["buttons"]}))
-    print(f"refresh_rate={doc['refresh_rate']} buttons={doc['buttons']}")
-    return doc["refresh_rate"]
+    buttons = doc.get("buttons", {})
+    rate = min(max(doc.get("refresh_rate", 180), 180), 3600)
+    state.update(image_hash=doc["image_hash"], screen_id=doc["screen_id"], buttons=buttons)
+    STATE.write_text(json.dumps(state))
+    print(f"refresh_rate={rate} buttons={buttons}")
+    return rate
 
 
 p = argparse.ArgumentParser(description=__doc__)

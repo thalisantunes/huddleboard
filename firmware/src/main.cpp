@@ -10,6 +10,7 @@
 #include <GxEPD2_7C.h>  // pulls in the 7-colour driver headers
 #include <driver/rtc_io.h>
 #include <esp_sleep.h>
+#include <time.h>
 
 #include "config.h"
 
@@ -19,7 +20,10 @@
 static GxEPD2_730c_ACeP_730 epd(EPD_CS, EPD_DC, EPD_RST, EPD_BUSY);
 
 // State that survives deep sleep.
+// Holds 15 chars; the bridge sends a 12-char sha1 prefix.
 RTC_DATA_ATTR static char rtcHash[16] = "";
+static_assert(sizeof(rtcHash) > 12, "rtcHash must fit the bridge image_hash");
+RTC_DATA_ATTR static time_t rtcLastRefreshS = 0;  // system time survives deep sleep (RTC timer)
 RTC_DATA_ATTR static char rtcScreenId[48] = "";
 RTC_DATA_ATTR static char rtcActions[3][12] = {"", "", ""};  // action name per button A/B/C
 RTC_DATA_ATTR static char rtcPendingBtn = 0;                  // button not yet delivered
@@ -159,9 +163,9 @@ void setup() {
   Serial.begin(115200);
   prefs.begin("kcd", false);
 
-  // Hold button A for 5 s at power-on or reset (not on a button wake) to forget Wi-Fi.
+  // Hold button A for 5 s at power-on or reset (not on a timer or button wake) to forget Wi-Fi.
   pinMode(BTN_A, INPUT_PULLUP);
-  if (esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_EXT1 && !digitalRead(BTN_A)) {
+  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_UNDEFINED && !digitalRead(BTN_A)) {
     uint32_t t0 = millis();
     while (!digitalRead(BTN_A) && millis() - t0 < 5000) delay(10);
     if (millis() - t0 >= 5000) {
@@ -179,7 +183,7 @@ void setup() {
   Serial.printf("wake button=%c hash=%s\n", button ? button : '-', rtcHash);
   if (button) {
     const char* act = rtcActions[button - 'A'];
-    if (strcmp(act, "none") != 0) {  // unknown map (empty) still posts
+    if (rtcScreenId[0] && strcmp(act, "none") != 0) {  // unknown map (empty) still posts
       rtcPendingBtn = button;
       strlcpy(rtcPendingScreen, rtcScreenId, sizeof(rtcPendingScreen));
     }
@@ -191,6 +195,10 @@ void setup() {
   }
 
   postPendingAction();
+
+  // The panel must rest >= MIN_SLEEP_S between refreshes: an early button wake only posts.
+  time_t sinceRefresh = time(nullptr) - rtcLastRefreshS;
+  if (button && rtcHash[0] && sinceRefresh < MIN_SLEEP_S) sleepFor(MIN_SLEEP_S - sinceRefresh);
 
   HTTPClient http;
   char q[48];
@@ -218,8 +226,10 @@ void setup() {
   strlcpy(rtcScreenId, doc["screen_id"] | "", sizeof(rtcScreenId));
 
   if (!hash.isEmpty() && hash != rtcHash) {
-    if (showImage(imageUrl)) strlcpy(rtcHash, hash.c_str(), sizeof(rtcHash));
-    else rtcHash[0] = 0;  // force a retry next cycle
+    if (showImage(imageUrl)) {
+      strlcpy(rtcHash, hash.c_str(), sizeof(rtcHash));
+      rtcLastRefreshS = time(nullptr);
+    } else rtcHash[0] = 0;  // force a retry next cycle
   } else {
     Serial.println("image unchanged");
   }

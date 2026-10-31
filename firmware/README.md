@@ -49,12 +49,14 @@ CI does this on every run and, on a `v*` tag, stages it in `docs/flash/firmware/
 The page in `../docs/flash` uses ESP Web Tools: it needs Chrome or Edge (Web Serial) and HTTPS or localhost.
 For a local test, copy the image into `docs/flash/firmware/` and run `python3 -m http.server` inside `docs/flash`.
 
+> The release binary is built with `secrets.example.h` (example bridge URL and token). In v0.1 anyone using web flash must build their own binary with their own secrets; runtime configuration is planned for v0.2. The page also needs the `.bin` copied to `docs/flash/firmware/` (it comes from the CI artifact on a tag), otherwise it returns 404.
+
 ## Wi-Fi provisioning
 
 With no stored credentials the device waits 5 minutes for Improv Wi-Fi over USB serial
 (ESP Web Tools, or https://www.improv-wifi.com in Chrome or Edge). Credentials are stored in NVS and survive reflashes
 of the app partition. There is no SoftAP portal. To forget the network, hold button A for 5 s while powering on or resetting
-(not when waking from sleep); the serial log prints `wifi credentials cleared`.
+(not when waking from sleep by timer or button); the serial log prints `wifi credentials cleared`.
 A wrong password for a stored SSID is not detected as such: the device retries
 every 5 minutes until you clear the credentials this way, then re-provision.
 

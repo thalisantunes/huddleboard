@@ -1,6 +1,6 @@
 # kiro-crew-deck
 
-A desk e-paper gadget that monitors and controls a [KiroCrew](https://github.com/) instance:
+A desk e-paper gadget that monitors and controls a [KiroCrew](https://github.com/kirodotdev/KiroCrew) instance:
 pending approvals, agent slots, task counts and usage on a 7.3" 7-color screen, with three
 physical buttons to approve, reject or stop.
 
@@ -42,10 +42,6 @@ bridge/.venv/bin/python tools/device_sim.py --press A --out frame.png     # pres
 
 See [firmware/](firmware/). Hardware assembly and BOM: [docs/hardware/assembly.md](docs/hardware/assembly.md).
 
-## License
-
-MIT
-
 ## Device buttons
 
 `GET /api/display` returns `"buttons": {"A": "approve", "B": "reject", "C": "stop"}`.
@@ -58,3 +54,7 @@ A button with no action on the current screen is `"none"`; firmware must ignore 
 - OTA firmware updates.
 - 3D-printed case.
 - Native KiroCrew integration: compact endpoint and approval event.
+
+## License
+
+MIT
