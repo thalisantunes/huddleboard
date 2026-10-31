@@ -1,0 +1,83 @@
+{
+ "gerado_em": 1793458422,
+ "resumo": {
+  "esperando": 2,
+  "parada": 3,
+  "trabalhando": 3,
+  "desconhecido": 0
+ },
+ "janelas": [
+  {
+   "sessao": "sess-5",
+   "indice": 2,
+   "nome": "win-7",
+   "estado": "trabalhando",
+   "desde": 1793455406,
+   "claude": true,
+   "papel": "orquestrada"
+  },
+  {
+   "sessao": "sess-6",
+   "indice": 0,
+   "nome": "claude",
+   "estado": "trabalhando",
+   "desde": 1793423700,
+   "claude": true,
+   "papel": "orquestradora"
+  },
+  {
+   "sessao": "sess-9",
+   "indice": 0,
+   "nome": "claude",
+   "estado": "trabalhando",
+   "desde": 1793458414,
+   "claude": true,
+   "papel": "orquestradora"
+  },
+  {
+   "sessao": "sess-1",
+   "indice": 0,
+   "nome": "claude",
+   "estado": "parada",
+   "desde": 1793373730,
+   "claude": true,
+   "papel": "orquestradora"
+  },
+  {
+   "sessao": "sess-2",
+   "indice": 0,
+   "nome": "claude",
+   "estado": "parada",
+   "desde": 1793402867,
+   "claude": true,
+   "papel": "orquestradora"
+  },
+  {
+   "sessao": "sess-3",
+   "indice": 0,
+   "nome": "claude",
+   "estado": "parada",
+   "desde": 1793383250,
+   "claude": true,
+   "papel": "orquestradora"
+  },
+  {
+   "sessao": "sess-4",
+   "indice": 0,
+   "nome": "claude",
+   "estado": "esperando",
+   "desde": 1793458002,
+   "claude": true,
+   "papel": "orquestradora"
+  },
+  {
+   "sessao": "sess-5",
+   "indice": 0,
+   "nome": "claude",
+   "estado": "esperando",
+   "desde": 1793457042,
+   "claude": true,
+   "papel": "orquestradora"
+  }
+ ]
+}

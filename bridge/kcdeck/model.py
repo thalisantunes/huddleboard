@@ -1,3 +1,4 @@
+import time
 from dataclasses import dataclass, field
 
 
@@ -12,6 +13,8 @@ class Screen:
     battery_v: float | None = None
     next_refresh_s: int = 300
     errors: list = field(default_factory=list)  # endpoints that failed this cycle
+    sessions: dict | None = None  # {waiting, working, stopped, unknown}; None = painel provider off
+    waiting: list = field(default_factory=list)  # up to 3 {name, minutes}, longest waiting first
 
 
 def _items(raw, key):
@@ -35,6 +38,21 @@ def build_screen(raw: dict, updated_at: str = "", battery_v=None, next_refresh_s
     status = raw.get("status") or {}
     tasks = raw.get("tasks_summary") or {}
     usage = raw.get("usage") or {}
+    sessions, waiting = None, []
+    if "painel" in raw:  # present (even empty) means the provider is enabled
+        p = raw["painel"] if isinstance(raw["painel"], dict) else {}
+        r = p.get("resumo") if isinstance(p.get("resumo"), dict) else {}
+        sessions = {k: _num(r, pt, int) for k, pt in (
+            ("waiting", "esperando"), ("working", "trabalhando"), ("stopped", "parada"), ("unknown", "desconhecido"))}
+        now = _num(p, "gerado_em", float) or time.time()
+        wins = sorted(
+            (w for w in _items(p, "janelas") if w.get("estado") == "esperando"),
+            key=lambda w: _num(w, "desde", float),
+        )
+        waiting = [
+            {"name": f"{w.get('sessao', '?')}/{w.get('nome', '?')}", "minutes": max(0, int((now - _num(w, "desde", float)) // 60))}
+            for w in wins[:3]
+        ]
     return Screen(
         crew_name=str(status.get("name") or status.get("crew") or "KiroCrew"),
         updated_at=updated_at,
@@ -63,6 +81,8 @@ def build_screen(raw: dict, updated_at: str = "", battery_v=None, next_refresh_s
         battery_v=battery_v,
         next_refresh_s=next_refresh_s,
         errors=list(errors),
+        sessions=sessions,
+        waiting=waiting,
     )
 
 

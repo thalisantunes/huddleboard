@@ -16,6 +16,8 @@ class Config:
     port: int
     poll_seconds: int
     ws: bool
+    painel_url: str
+    painel_token: str
 
 
 def load() -> Config:
@@ -32,6 +34,8 @@ def load() -> Config:
         port=int(e("PORT", "5480")),
         poll_seconds=int(e("POLL_SECONDS", "60")),
         ws=e("KIROCREW_WS", "0") == "1",
+        painel_url=e("PAINEL_TMUX_URL", "").rstrip("/"),
+        painel_token=e("PAINEL_TMUX_TOKEN", ""),
     )
     if not cfg.device_tokens:
         logging.getLogger("kcdeck").warning("DEVICE_TOKENS is empty: every device request will be rejected")

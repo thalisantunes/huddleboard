@@ -183,3 +183,45 @@ async def test_ws_message_triggers_debounced_refresh(aiohttp_client, aiohttp_ser
             break
     await asyncio.sleep(0.2)
     assert len(calls) == 10  # exactly one coalesced recollect
+
+
+async def _painel_server(aiohttp_server, status=200):
+    import json
+    from aiohttp import web
+    from kcdeck.kirocrew import FIXTURE_DIR
+    body = (FIXTURE_DIR / "painel_estado.json").read_text()
+
+    async def h(request):
+        return web.Response(text=body, status=status, content_type="application/json")
+
+    app = web.Application()
+    app.add_routes([web.get("/estado.json", h)])
+    return await aiohttp_server(app)
+
+
+async def test_painel_on_sessions_and_urgent(aiohttp_client, aiohttp_server, cfg):
+    import dataclasses
+    srv = await _painel_server(aiohttp_server)
+    c = await aiohttp_client(server.make_app(dataclasses.replace(cfg, painel_url=f"http://127.0.0.1:{srv.port}")))
+    m = await (await c.get("/api/model.json", headers=AUTH)).json()
+    assert m["sessions"]["waiting"] == 2 and m["errors"] == []
+
+
+async def test_painel_waiting_alone_is_urgent(aiohttp_client, aiohttp_server, cfg, monkeypatch):
+    import dataclasses
+    srv = await _painel_server(aiohttp_server)
+    c = await aiohttp_client(server.make_app(dataclasses.replace(cfg, painel_url=f"http://127.0.0.1:{srv.port}")))
+    c.app["state"]["frame"] = None
+    async def none():
+        return {"approvals": []}
+    c.app["kc"].get_approvals = none
+    d = await _display(c)
+    assert d["refresh_rate"] == 180
+
+
+async def test_painel_failure_is_error(aiohttp_client, aiohttp_server, cfg):
+    import dataclasses
+    srv = await _painel_server(aiohttp_server, status=500)
+    c = await aiohttp_client(server.make_app(dataclasses.replace(cfg, painel_url=f"http://127.0.0.1:{srv.port}")))
+    m = await (await c.get("/api/model.json", headers=AUTH)).json()
+    assert m["errors"] == ["painel"] and m["sessions"]["waiting"] == 0

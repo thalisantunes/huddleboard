@@ -59,13 +59,31 @@ def render(screen: Screen) -> Image.Image:
     # block 2: slots
     d.line((0, 206, W, 206), fill=BLACK, width=2)
     d.text((16, 212), "SLOTS", font=fb, fill=BLUE)
+    half = screen.sessions is not None  # painel provider on: slots yield the right half
+    name_w, text_x, limit = (130, 190, 390) if half else (164, 220, W - 16)
     y = 244
     for s in screen.slots[:5]:
         g, col = _GLYPH.get(s["state"], ("▶", GREEN))
         d.text((16, y), g, font=f, fill=col)
-        d.text((48, y), _clip(d, s["name"], fbs, 164), font=fbs, fill=BLACK)
-        d.text((220, y), _clip(d, f"{s['state']} {s['task']}".strip(), f, W - 236), font=f, fill=BLACK)
+        d.text((48, y), _clip(d, s["name"], fbs, name_w), font=fbs, fill=BLACK)
+        d.text((text_x, y), _clip(d, f"{s['state']} {s['task']}".strip(), f, limit - text_x), font=f, fill=BLACK)
         y += 28
+    if half:
+        ss = screen.sessions
+        d.line((400, 206, 400, 392), fill=BLACK, width=2)
+        d.text((416, 212), "CLAUDE CODE", font=fb, fill=BLUE)
+        parts = [("!", RED, ss["waiting"]), ("\u25b6", GREEN, ss["working"]), ("\u25a0", BLACK, ss["stopped"])]
+        if ss["unknown"]:
+            parts.append(("?", ORANGE, ss["unknown"]))
+        x = 416
+        for g, col, n in parts:
+            d.text((x, 246), g, font=fbs, fill=col)
+            d.text((x + 24, 246), str(n), font=fbs, fill=BLACK)
+            x += 24 + d.textlength(str(n), font=fbs) + 24
+        y = 284
+        for w in screen.waiting:
+            d.text((416, y), _clip(d, f"! {w['name']} {w['minutes']}m", f, W - 16 - 416), font=f, fill=RED)
+            y += 28
 
     # block 3: tasks
     d.line((0, 392, W, 392), fill=BLACK, width=2)

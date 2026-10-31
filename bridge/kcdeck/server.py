@@ -13,6 +13,7 @@ import aiohttp
 from aiohttp import web
 
 from . import config
+from . import painel
 from .kirocrew import KiroCrew
 from .model import build_screen, pick_buttons
 from .render import render, to_epd_bytes
@@ -30,16 +31,19 @@ async def refresh(app, battery=None) -> dict:
     if battery is None:
         battery = state.get("battery")
     calls = [kc.get_status(), kc.get_slots(), kc.get_approvals(), kc.get_tasks_summary(), kc.get_usage()]
+    keys = _KEYS
+    if cfg.painel_url:
+        keys, calls = keys + ("painel",), calls + [painel.fetch(cfg)]
     results = await asyncio.gather(*calls, return_exceptions=True)
     raw, errors = {}, []
-    for k, r in zip(_KEYS, results):
+    for k, r in zip(keys, results):
         if isinstance(r, Exception):
             log.warning("kirocrew %s failed: %r", k, r)
             errors.append(k)
             r = {}
         raw[k] = r
     screen = build_screen(raw, datetime.now().strftime("%H:%M"), battery, cfg.refresh, errors)
-    if screen.approvals:
+    if screen.approvals or (screen.sessions and screen.sessions["waiting"]):
         screen.next_refresh_s = cfg.refresh_urgent
     img = render(screen)
     data = to_epd_bytes(img)
