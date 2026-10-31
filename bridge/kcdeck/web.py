@@ -9,9 +9,9 @@ INDEX = """<!doctype html>
 <style>
   body { margin: 0; padding: 16px; background: #111; color: #ccc; font: 14px system-ui, sans-serif;
          display: flex; flex-direction: column; align-items: center; gap: 14px; }
-  #frame { width: 100%; max-width: 840px; box-sizing: border-box; padding: 12px; background: #e8e4d8;
-           border-radius: 12px; box-shadow: 0 4px 24px #000; }
-  #img { display: block; width: 100%; height: auto; aspect-ratio: 800 / 480; background: #fff; border-radius: 3px; }
+  #frame { width: 100%; max-width: 840px; box-sizing: border-box; padding: 12px; background: #1c1c1c;
+           border: 1px solid #333; border-radius: 12px; box-shadow: 0 4px 24px #000; }
+  #img { display: block; width: 100%; height: auto; aspect-ratio: 800 / 480; background: #000; border-radius: 3px; }
   #status { text-align: center; }
   #buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
   button { background: #2a2a2a; color: #eee; border: 1px solid #555; border-radius: 6px; padding: 10px 18px;

@@ -40,8 +40,17 @@ def _fx(painel=None):
 def test_painel_off_render_is_unchanged():
     import hashlib
     s = build_screen(_fx(), "12:00", 3.87, 180)
-    # sha1 of the painel-off render, re-recorded after the real-schema fixtures
-    assert hashlib.sha1(to_epd_bytes(render(s))).hexdigest() == "acfc2bcc5491fb8e1a749e1b8e9d22152946fe70"
+    # sha1 of the painel-off light-theme render; the light theme must stay as it was
+    assert hashlib.sha1(to_epd_bytes(render(s, "light"))).hexdigest() == "acfc2bcc5491fb8e1a749e1b8e9d22152946fe70"
+
+
+def test_dark_is_default_and_light_still_renders():
+    import hashlib
+    s = build_screen(_fx(), "12:00", 3.87, 180)
+    dark, light = to_epd_bytes(render(s)), to_epd_bytes(render(s, "light"))
+    assert hashlib.sha1(dark).hexdigest() == "a809532ef2be480cb208dc62efbb8190e0a51708"
+    assert dark[0] >> 4 == 0 and light[0] >> 4 == 1  # black vs white background
+    assert dark != light and len(dark) == len(light) == 192000
 
 
 def test_painel_on_counts_and_renders():

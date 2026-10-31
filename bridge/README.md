@@ -15,6 +15,7 @@ Python service that aggregates KiroCrew (and optionally painel-tmux), renders th
 | `DEVICE_TOKENS` | empty | comma-separated Bearer tokens accepted from devices |
 | `POLL_SECONDS` / `REFRESH_SECONDS` / `REFRESH_SECONDS_URGENT` | 60 / 300 / 180 | poll and device refresh |
 | `INPUT_RECENT_MINUTES` | `30` | slots waiting for input count as urgent (badge, 180 s refresh) only if active this recently |
+| `THEME` | `dark` | `dark` or `light` frame theme |
 | `FIXTURES` | `0` | `1` = read `fixtures/*.json` instead of KiroCrew |
 | `BIND` / `PORT` | `127.0.0.1` / `5480` | listen address |
 

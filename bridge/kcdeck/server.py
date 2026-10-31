@@ -52,7 +52,7 @@ async def refresh(app, battery=None) -> dict:
                           input_recent_min=cfg.input_recent_minutes)
     if screen.approvals or screen.waiting_input or (screen.sessions and screen.sessions["waiting"]):
         screen.next_refresh_s = cfg.refresh_urgent
-    img = render(screen)
+    img = render(screen, cfg.theme)
     data = to_epd_bytes(img)
     h = hashlib.sha1(data).hexdigest()[:12]
     buf = io.BytesIO()

@@ -48,8 +48,14 @@ def _usage_line(u) -> str:
     return " \u00b7 ".join(parts) or "usage n/a"
 
 
-def render(screen: Screen) -> Image.Image:
-    img = Image.new("P", (W, H), WHITE)
+def render(screen: Screen, theme: str = "dark") -> Image.Image:
+    # The palette has no grey: hierarchy comes from font size/weight and accent colors, not tones.
+    dark = theme != "light"
+    bg, fg = (BLACK, WHITE) if dark else (WHITE, BLACK)
+    title = YELLOW if dark else BLUE  # section titles
+    warn = ORANGE if dark else RED  # warning text; red on black is too dim to read
+    lw = 1 if dark else 2  # divider width
+    img = Image.new("P", (W, H), bg)
     pal = [c for rgb in _RGB for c in rgb]
     img.putpalette(pal + [0] * (768 - len(pal)))
     d = ImageDraw.Draw(img)
@@ -61,70 +67,74 @@ def render(screen: Screen) -> Image.Image:
     right += f"{screen.battery_v:.2f}V" if screen.battery_v is not None else "--V"
     rw = d.textlength(right, font=f)
     fh = _font(_BOLD, 28)
-    d.text((16, 12), _clip(d, screen.crew_name, fh, W - 32 - rw - 16), font=fh, fill=BLACK)
-    d.text((W - 16 - rw, 16), right, font=f, fill=BLACK)
+    d.text((16, 12), _clip(d, screen.crew_name, fh, W - 32 - rw - 16), font=fh, fill=fg)
+    d.text((W - 16 - rw, 16), right, font=f, fill=fg)
     d.ellipse((W - 30, 4, W - 20, 14), fill=RED if screen.errors else GREEN)
-    d.line((0, 52, W, 52), fill=BLACK, width=2)
+    d.line((0, 52, W, 52), fill=fg, width=lw)
 
     # block 1: approvals
     n = len(screen.approvals)
     failed = "approvals" in screen.errors or "slots" in screen.errors  # approvals come from both
     d.rectangle((0, 58, W, 90), fill=ORANGE if failed else RED if n else GREEN)
-    d.text((16, 60), f"APPROVALS: {'?' if failed else n}", font=fb, fill=WHITE)
+    bar_fg = BLACK if dark and not n and not failed else WHITE  # white on bright green is unreadable on black
+    d.text((16, 60), f"APPROVALS: {'?' if failed else n}", font=fb, fill=bar_fg)
     if screen.waiting_input:
         d.rectangle((W - 200, 60, W - 10, 88), fill=ORANGE, outline=BLACK, width=2)
         d.text((W - 190, 60), f"INPUT: {screen.waiting_input}", font=fb, fill=BLACK)
     y = 96
     for a in screen.approvals[:3]:
         line = f"{a['agent']}: {a['title']}" if a["agent"] else a["title"]
-        d.text((16, y), _clip(d, line, f, W - 32), font=f, fill=RED)
+        d.text((16, y), _clip(d, line, f, W - 32), font=f, fill=warn)
         y += 28
     legend = "   ".join(f"[{b}] {a['kind']}" for b, a in pick_buttons(screen).items())
     if legend:
-        d.text((16, 180), legend, font=fs, fill=BLACK)
+        d.text((16, 180), legend, font=fs, fill=fg)
 
     # block 2: slots
-    d.line((0, 206, W, 206), fill=BLACK, width=2)
-    d.text((16, 212), "SLOTS", font=fb, fill=BLUE)
+    d.line((0, 206, W, 206), fill=fg, width=lw)
+    d.text((16, 212), "SLOTS", font=fb, fill=title)
     half = screen.sessions is not None  # painel provider on: slots yield the right half
     name_w, text_x, limit = (150, 205, 390) if half else (230, 290, W - 16)
     y = 244
     for s in screen.slots[:5]:
-        g, col = _GLYPH.get(s["state"], ("▶", GREEN))
+        g, col = _GLYPH.get(s["state"], ("\u25b6", GREEN))
+        if s["state"] == "idle":
+            col = fg
         d.text((16, y), g, font=f, fill=col)
-        d.text((48, y), _clip(d, s["name"], fbs, name_w), font=fbs, fill=BLACK)
-        d.text((text_x, y), _clip(d, f"{_LABEL.get(s['state'], s['state'])} {s['task']}".strip(), f, limit - text_x), font=f, fill=BLACK)
+        nf = f if dark and s["state"] == "idle" else fbs  # idle rows recede: regular weight
+        d.text((48, y), _clip(d, s["name"], nf, name_w), font=nf, fill=fg)
+        d.text((text_x, y), _clip(d, f"{_LABEL.get(s['state'], s['state'])} {s['task']}".strip(), f, limit - text_x), font=f, fill=fg)
         y += 28
     if half:
         ss = screen.sessions
-        d.line((400, 206, 400, 392), fill=BLACK, width=2)
-        d.text((416, 212), "CLAUDE CODE", font=fb, fill=BLUE)
-        parts = [("!", RED, ss["waiting"]), ("\u25b6", GREEN, ss["working"]), ("\u25a0", BLACK, ss["stopped"])]
+        d.line((400, 206, 400, 392), fill=fg, width=lw)
+        d.text((416, 212), "CLAUDE CODE", font=fb, fill=title)
+        parts = [("!", RED, ss["waiting"]), ("\u25b6", GREEN, ss["working"]), ("\u25a0", fg, ss["stopped"])]
         if ss["unknown"]:
             parts.append(("?", ORANGE, ss["unknown"]))
         x = 416
         for g, col, n in parts:
             d.text((x, 246), g, font=fbs, fill=col)
-            d.text((x + 24, 246), str(n), font=fbs, fill=BLACK)
+            d.text((x + 24, 246), str(n), font=fbs, fill=fg)
             x += 24 + d.textlength(str(n), font=fbs) + 24
         y = 284
         for w in screen.waiting:
-            d.text((416, y), _clip(d, f"! {w['name']} {w['minutes']}m", f, W - 16 - 416), font=f, fill=RED)
+            d.text((416, y), _clip(d, f"! {w['name']} {w['minutes']}m", f, W - 16 - 416), font=f, fill=warn)
             y += 28
 
     # block 3: tasks
-    d.line((0, 392, W, 392), fill=BLACK, width=2)
+    d.line((0, 392, W, 392), fill=fg, width=lw)
     t = screen.tasks
-    d.text((16, 400), f"TASKS  running {t['running']}   queued {t['queued']}", font=f, fill=BLACK)
-    d.text((430, 400), f"failed {t['failed']}", font=f, fill=RED if t["failed"] else BLACK)
+    d.text((16, 400), f"TASKS  running {t['running']}   queued {t['queued']}", font=f, fill=fg)
+    d.text((430, 400), f"failed {t['failed']}", font=f, fill=warn if t["failed"] else fg)
 
     # footer
     u = screen.usage
     nxt = f"next {screen.next_refresh_s}s"
     nw = d.textlength(nxt, font=fs)
     left = _usage_line(u)
-    d.text((16, 440), _clip(d, left, fs, W - 48 - nw), font=fs, fill=BLACK)
-    d.text((W - 16 - nw, 440), nxt, font=fs, fill=BLACK)
+    d.text((16, 440), _clip(d, left, fs, W - 48 - nw), font=fs, fill=fg)
+    d.text((W - 16 - nw, 440), nxt, font=fs, fill=fg)
     return img
 
 
