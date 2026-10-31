@@ -41,7 +41,7 @@ def test_painel_off_render_is_unchanged():
     import hashlib
     s = build_screen(_fx(), "12:00", 3.87, 180)
     # sha1 of the painel-off render, re-recorded after the real-schema fixtures
-    assert hashlib.sha1(to_epd_bytes(render(s))).hexdigest() == "b7752817997746b18e9a4a915dc109a704a69845"
+    assert hashlib.sha1(to_epd_bytes(render(s))).hexdigest() == "96ec08879f4e11646c8485b7fa0fcf97f83c23ed"
 
 
 def test_painel_on_counts_and_renders():
@@ -54,3 +54,13 @@ def test_painel_on_counts_and_renders():
     data = to_epd_bytes(render(s))
     assert len(data) == 192000 and all((b >> 4) <= 6 and (b & 15) <= 6 for b in data)
     assert data != to_epd_bytes(render(build_screen(_fx(), "12:00", 3.87, 180)))
+
+
+def test_usage_line_omits_absent_parts():
+    from kcdeck.model import _usage
+    from kcdeck.render import _usage_line
+    full = _usage({"billing": {"credits_used": 0.02, "credits_plan": 50, "percentage": 0, "cost_usd": 1.5,
+                               "resets": "2026-11-01T00:00:00Z"}, "sessions": {"today": {"messages": 4}}})
+    assert _usage_line(full) == "credits 0.02 / 50 (0%) \u00b7 $1.50 \u00b7 resets 01/11 \u00b7 4 msgs today"
+    assert _usage_line(_usage({"billing": {"credits_used": 3}})) == "credits 3"
+    assert _usage_line(_usage(None)) == "usage n/a"

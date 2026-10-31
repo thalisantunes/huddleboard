@@ -8,8 +8,8 @@ def test_empty_inputs_do_not_break():
 
 
 def test_garbage_inputs_do_not_break():
-    s = build_screen({"approvals": "x", "slots": None, "usage": {"credits": "abc"}, "tasks_summary": [1]})
-    assert s.usage["credits"] == 0.0
+    s = build_screen({"approvals": "x", "slots": None, "usage": {"billing": {"credits_used": "abc"}}, "tasks_summary": [1]})
+    assert s.usage["credits_used"] is None
 
 
 def test_buttons():
@@ -41,7 +41,9 @@ def test_slot_approvals_native_and_coordinator_dedup():
 def test_tasks_and_usage_real_shapes():
     s = build_screen({
         "tasks_summary": {"depth": {"running": 2, "queued": 3, "by_state": {"FAILED": 1}}},
-        "usage": {"window_days": 7, "rows": [{"credits": 1.5, "turns": 2}, {"credits": 2, "turns": 3}]},
+        "usage": {"billing": {"credits_used": 1.5, "credits_plan": 50, "percentage": 3, "resets": "2026-11-01T00:00:00Z"},
+                  "sessions": {"today": {"messages": 7}}},
     })
     assert s.tasks == {"running": 2, "queued": 3, "failed": 1}
-    assert s.usage == {"credits": 3.5, "turns": 5, "window_days": 7}
+    assert s.usage == {"credits_used": 1.5, "credits_plan": 50.0, "percentage": 3.0, "cost_usd": None,
+                       "resets": "2026-11-01T00:00:00Z", "msgs_today": 7}

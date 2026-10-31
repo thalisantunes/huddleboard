@@ -93,8 +93,9 @@ def _token_server(state):
         return web.json_response({"token": f"TOK{state['mints']}", "expires_in": 72000})
 
     async def guarded(request):
-        state["seen"].append(request.path_qs)
-        if request.query.get("token") != f"TOK{state['accept']}":
+        cookie = request.cookies.get(f"mc_token_{request.url.port}")
+        state["seen"].append((request.path_qs, cookie))
+        if cookie != f"TOK{state['accept']}":
             return web.Response(status=403)
         return web.json_response({"ok": True})
 
@@ -104,7 +105,7 @@ def _token_server(state):
     return app
 
 
-async def test_token_minted_reused_and_sent_in_query(aiohttp_server, cfg, monkeypatch):
+async def test_token_minted_reused_and_sent_as_cookie(aiohttp_server, cfg, monkeypatch):
     from kcdeck import kirocrew
     state = {"mints": 0, "accept": 1, "seen": []}
     kc = KiroCrew(_cfg(cfg, await aiohttp_server(_token_server(state)), internal_secret="sek"))
@@ -113,11 +114,11 @@ async def test_token_minted_reused_and_sent_in_query(aiohttp_server, cfg, monkey
     await kc.get_status()
     await kc.get_status()
     assert state["mints"] == 1 and state["ttl"] == "20h"
-    assert state["seen"] == ["/api/status?token=TOK1"] * 2
+    assert state["seen"] == [("/api/status", "TOK1")] * 2
     t[0] += 241  # past the 4 min reuse window
     state["accept"] = 2
     await kc.get_status()
-    assert state["mints"] == 2 and state["seen"][-1] == "/api/status?token=TOK2"
+    assert state["mints"] == 2 and state["seen"][-1] == ("/api/status", "TOK2")
     await kc.close()
 
 
@@ -127,7 +128,7 @@ async def test_token_reminted_after_403(aiohttp_server, cfg):
     await kc.get_status()
     state["accept"] = 2  # gateway restarted: TOK1 no longer valid
     assert await kc.get_status() == {"ok": True}
-    assert state["mints"] == 2 and state["seen"][-2:] == ["/api/status?token=TOK1", "/api/status?token=TOK2"]
+    assert state["mints"] == 2 and state["seen"][-2:] == [("/api/status", "TOK1"), ("/api/status", "TOK2")]
     await kc.close()
 
 
@@ -136,7 +137,7 @@ async def test_token_on_state_decision_keeps_origin_params(aiohttp_server, cfg):
     kc = KiroCrew(_cfg(cfg, await aiohttp_server(_token_server(state)), internal_secret="sek"))
     await kc.decide(STATE_APPROVAL, "approve")
     await kc.close()
-    assert state["seen"] == ["/api/approvals/ap%2F7/approve?origin=coordinator&slot=cron:n&instance=i1&token=TOK1"]
+    assert state["seen"] == [("/api/approvals/ap%2F7/approve?origin=coordinator&slot=cron:n&instance=i1", "TOK1")]
 
 
 async def test_mint_failure_sets_token_error_and_request_proceeds(aiohttp_server, cfg):
@@ -146,5 +147,5 @@ async def test_mint_failure_sets_token_error_and_request_proceeds(aiohttp_server
         await kc.get_status()
     except Exception:
         pass
-    assert kc.token_error and state["seen"][0] == "/api/status"  # went out without a token
+    assert kc.token_error and state["seen"][0] == ("/api/status", None)  # went out without a token
     await kc.close()

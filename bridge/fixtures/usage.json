@@ -1,5 +1,11 @@
-{"window_days": 7,
- "rows": [
-  {"category": "chat", "channel": "dashboard", "credits": 38.25, "turns": 88, "peak_pct": 61.0, "span_days": 7, "window_days": 7},
-  {"category": "cron", "channel": "cron", "credits": 12.5, "turns": 31, "peak_pct": 20.0, "span_days": 7, "window_days": 7}
- ]}
+{"username": "owner",
+ "sessions": {"total_sessions": 3, "total_messages": 412, "total_tool_calls": 1290, "all_time_sessions": 9,
+  "daily_history": [{"date": "2026-10-30", "sessions": 1, "messages": 120, "tool_calls": 400, "credits": 12.5},
+                    {"date": "2026-10-31", "sessions": 2, "messages": 58, "tool_calls": 210, "credits": 11.25}],
+  "today": {"sessions": 2, "messages": 58, "tool_calls": 210},
+  "this_week": {"sessions": 3, "messages": 412, "tool_calls": 1290},
+  "this_month": {"sessions": 3, "messages": 412, "tool_calls": 1290},
+  "avg_msgs_per_session": 137.3, "avg_tools_per_session": 430.0, "refused_transcripts": 0},
+ "billing": {"credits_used": 23.75, "credits_plan": 50.0, "credits_overage": 0.0, "percentage": 47.5,
+  "cost_usd": 0.0, "resets": "2026-11-01T00:00:00Z", "plan": "pro", "overage_rate": 0.04},
+ "refreshing": false}

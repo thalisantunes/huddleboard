@@ -6,6 +6,7 @@ import os
 import time
 from urllib.parse import quote
 from pathlib import Path
+from urllib.parse import urlparse
 
 import aiohttp
 
@@ -22,8 +23,7 @@ def _now() -> float:
 
 def safe_error(e: BaseException) -> str:
     """Loggable summary of an error. Never repr() aiohttp errors: ClientResponseError carries
-    request headers (X-Internal-Secret, Cookie, Authorization) and str() carries the URL query
-    (which holds the owner token)."""
+    request headers (X-Internal-Secret, Cookie incl. the owner token, Authorization)."""
     if isinstance(e, aiohttp.ClientResponseError):
         return f"{e.request_info.method} {e.request_info.url.path} status {e.status}"
     return f"{type(e).__name__}"
@@ -95,12 +95,16 @@ class KiroCrew:
             await self._mint()
         return self._token
 
-    def _headers(self) -> dict:
+    def _headers(self, token: str = "") -> dict:
         h = {}
         if self._secret:
             h["X-Internal-Secret"] = self._secret
-        if self.cfg.cookie:
-            h["Cookie"] = self.cfg.cookie
+        cookies = [self.cfg.cookie] if self.cfg.cookie else []
+        if token:  # session-cookie form of the owner token; keeps it out of URLs and access logs
+            u = urlparse(self.cfg.kirocrew_url)
+            cookies.append(f"mc_token_{u.port or (443 if u.scheme == 'https' else 80)}={token}")
+        if cookies:
+            h["Cookie"] = "; ".join(cookies)
         return h
 
     def _reload_secret(self):
@@ -118,12 +122,9 @@ class KiroCrew:
 
     async def _req(self, method: str, path: str, params=None, **kw):
         for attempt in (0, 1):
-            q = dict(params or {})
-            token = await self._token_value(force=attempt == 1)
-            if token:
-                q["token"] = token  # status/approvals/tasks/usage accept only cookie or ?token=
+            token = await self._token_value(force=attempt == 1)  # status/approvals/tasks/usage need it
             url = self.cfg.kirocrew_url + path
-            async with self._http().request(method, url, params=q or None, headers=self._headers(), **kw) as r:
+            async with self._http().request(method, url, params=params, headers=self._headers(token), **kw) as r:
                 if r.status in (401, 403) and attempt == 0:
                     self._reload_secret()  # the gateway restarted: new secret, old token invalid
                     self._token = ""

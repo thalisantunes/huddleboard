@@ -10,7 +10,7 @@ class Screen:
     approvals: list = field(default_factory=list)
     slots: list = field(default_factory=list)  # {name, state, task}
     tasks: dict = field(default_factory=lambda: {"running": 0, "queued": 0, "failed": 0})
-    usage: dict = field(default_factory=lambda: {"credits": 0.0, "turns": 0, "window_days": 0})
+    usage: dict = field(default_factory=lambda: _usage(None))
     battery_v: float | None = None
     next_refresh_s: int = 300
     errors: list = field(default_factory=list)  # endpoints that failed this cycle
@@ -89,12 +89,23 @@ def _approvals(slots_raw, approvals_raw):
     return out
 
 
+def _opt(d, key):
+    try:
+        return float(d[key])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
 def _usage(raw):
-    # ?: the exact /api/usage envelope is unconfirmed; accept a bare row, a list of rows or {"rows": [...]}.
-    rows = [raw] if isinstance(raw, dict) and "credits" in raw else _items(raw, "rows")
-    window = _num(_d(raw), "window_days", int) or (_num(rows[0], "window_days", int) if rows else 0)
-    return {"credits": sum(_num(r, "credits", float) for r in rows),
-            "turns": sum(_num(r, "turns", int) for r in rows), "window_days": window}
+    """From the real /api/usage: billing.* plus sessions.today.messages. Absent parts stay None."""
+    raw = _d(raw)
+    billing, today = _d(raw.get("billing")), _d(_d(raw.get("sessions")).get("today"))
+    return {
+        "credits_used": _opt(billing, "credits_used"), "credits_plan": _opt(billing, "credits_plan"),
+        "percentage": _opt(billing, "percentage"), "cost_usd": _opt(billing, "cost_usd"),
+        "resets": _s(billing.get("resets")),
+        "msgs_today": int(_opt(today, "messages")) if _opt(today, "messages") is not None else None,
+    }
 
 
 def build_screen(raw: dict, updated_at: str = "", battery_v=None, next_refresh_s: int = 300, errors=()) -> Screen:

@@ -1,3 +1,5 @@
+import re
+
 from PIL import Image, ImageDraw, ImageFont
 
 from .model import Screen, pick_buttons
@@ -22,6 +24,25 @@ def _clip(d, text, font, max_w):
     while text and d.textlength(text, font=font) > max_w:
         text = text[:-1]
     return text
+
+
+def _usage_line(u) -> str:
+    parts = []
+    if u["credits_used"] is not None:
+        c = f"credits {u['credits_used']:g}"
+        if u["credits_plan"]:
+            c += f" / {u['credits_plan']:g}"
+        if u["percentage"] is not None:
+            c += f" ({u['percentage']:g}%)"
+        parts.append(c)
+    if u["cost_usd"] is not None:
+        parts.append(f"${u['cost_usd']:.2f}")
+    if u["resets"]:
+        m = re.match(r"(\d{4})-(\d{2})-(\d{2})", u["resets"])
+        parts.append("resets " + (f"{m[3]}/{m[2]}" if m else u["resets"][:10]))
+    if u["msgs_today"] is not None:
+        parts.append(f"{u['msgs_today']} msgs today")
+    return " \u00b7 ".join(parts) or "usage n/a"
 
 
 def render(screen: Screen) -> Image.Image:
@@ -95,8 +116,7 @@ def render(screen: Screen) -> Image.Image:
     u = screen.usage
     nxt = f"next {screen.next_refresh_s}s"
     nw = d.textlength(nxt, font=fs)
-    win = f" / {u['window_days']}d" if u["window_days"] else ""
-    left = f"credits {u['credits']:.1f}{win}   {u['turns']} turns"
+    left = _usage_line(u)
     d.text((16, 440), _clip(d, left, fs, W - 48 - nw), font=fs, fill=BLACK)
     d.text((W - 16 - nw, 440), nxt, font=fs, fill=BLACK)
     return img

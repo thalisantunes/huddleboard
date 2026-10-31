@@ -5,7 +5,7 @@ from aiohttp import web
 
 from kcdeck import server
 
-SECRETS = ("TOPSECRET123", "COOKIESECRET456", "OWNERTOKEN789")
+SECRETS = ("TOPSECRET123", "COOKIESECRET456", "OWNERTOKEN789", "mc_token_")
 
 
 async def test_credentials_never_logged(aiohttp_client, aiohttp_server, cfg, caplog):
