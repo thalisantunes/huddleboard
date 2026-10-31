@@ -1,0 +1,12 @@
+{
+  "name": "Kiro Crew Deck",
+  "version": "0.1.0",
+  "new_install_prompt_erase": false,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "improv": true,
+      "parts": [{ "path": "firmware/kiro-crew-deck-firebeetle2.bin", "offset": 0 }]
+    }
+  ]
+}

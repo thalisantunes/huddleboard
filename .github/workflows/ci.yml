@@ -11,4 +11,20 @@ jobs:
       - run: pip install -e 'bridge[dev]'
       - run: pytest
         working-directory: bridge
-  # firmware: added in F1b
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install platformio
+      - run: cp firmware/src/secrets.example.h firmware/src/secrets.h
+      - run: pio run -d firmware -e firebeetle2_esp32s3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware-firebeetle2_esp32s3
+          path: |
+            firmware/.pio/build/firebeetle2_esp32s3/firmware.bin
+            firmware/.pio/build/firebeetle2_esp32s3/bootloader.bin
+            firmware/.pio/build/firebeetle2_esp32s3/partitions.bin
