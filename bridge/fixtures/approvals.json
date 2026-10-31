@@ -1,0 +1,4 @@
+{"approvals":[
+ {"id":"ap_101","title":"Bash: git push origin main","agent":"coder-1"},
+ {"id":"ap_102","title":"Edit: deploy/prod.yml","agent":"main"}
+]}

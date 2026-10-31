@@ -1,0 +1,82 @@
+from PIL import Image, ImageDraw, ImageFont
+
+from .model import Screen
+
+W, H = 800, 480
+BLACK, WHITE, GREEN, BLUE, RED, YELLOW, ORANGE = range(7)
+_RGB = [(0, 0, 0), (255, 255, 255), (0, 255, 0), (0, 0, 255), (255, 0, 0), (255, 255, 0), (255, 128, 0)]
+_FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+_GLYPH = {"idle": ("-", BLACK), "soft_pending": ("?", ORANGE), "killing": ("■", RED)}
+
+
+def _font(path, size):
+    try:
+        return ImageFont.truetype(path, size)
+    except OSError:
+        return ImageFont.load_default()
+
+
+def _clip(d, text, font, max_w):
+    while text and d.textlength(text, font=font) > max_w:
+        text = text[:-1]
+    return text
+
+
+def render(screen: Screen) -> Image.Image:
+    img = Image.new("P", (W, H), WHITE)
+    pal = [c for rgb in _RGB for c in rgb]
+    img.putpalette(pal + [0] * (768 - len(pal)))
+    d = ImageDraw.Draw(img)
+    d.fontmode = "1"  # no antialiasing: pure palette colors only
+    f, fb, fs = _font(_FONT, 22), _font(_BOLD, 24), _font(_FONT, 18)
+
+    # header
+    d.text((16, 12), screen.crew_name, font=_font(_BOLD, 28), fill=BLACK)
+    right = f"{screen.updated_at}  "
+    right += f"{screen.battery_v:.2f}V" if screen.battery_v is not None else "--V"
+    d.text((W - 16 - d.textlength(right, font=f), 16), right, font=f, fill=BLACK)
+    d.ellipse((W - 30, 4, W - 20, 14), fill=GREEN)
+    d.line((0, 52, W, 52), fill=BLACK, width=2)
+
+    # block 1: approvals
+    n = len(screen.approvals)
+    d.rectangle((0, 58, W, 90), fill=RED if n else GREEN)
+    d.text((16, 60), f"APPROVALS: {n}", font=fb, fill=WHITE)
+    y = 96
+    for a in screen.approvals[:3]:
+        line = f"{a['agent']}: {a['title']}" if a["agent"] else a["title"]
+        d.text((16, y), _clip(d, line, f, W - 32), font=f, fill=RED)
+        y += 28
+    if n:
+        d.text((16, 180), "[A] approve   [B] reject   [C] stop", font=fs, fill=BLACK)
+
+    # block 2: slots
+    d.line((0, 206, W, 206), fill=BLACK, width=2)
+    d.text((16, 212), "SLOTS", font=fb, fill=BLUE)
+    y = 244
+    for s in screen.slots[:5]:
+        g, col = _GLYPH.get(s["state"], ("▶", GREEN))
+        d.text((16, y), g, font=f, fill=col)
+        d.text((48, y), s["name"], font=_font(_BOLD, 22), fill=BLACK)
+        d.text((220, y), _clip(d, f"{s['state']} {s['task']}".strip(), f, W - 236), font=f, fill=BLACK)
+        y += 28
+
+    # block 3: tasks
+    d.line((0, 392, W, 392), fill=BLACK, width=2)
+    t = screen.tasks
+    d.text((16, 400), f"TASKS  running {t['running']}   queued {t['queued']}", font=f, fill=BLACK)
+    d.text((430, 400), f"failed {t['failed']}", font=f, fill=RED if t["failed"] else BLACK)
+
+    # footer
+    u = screen.usage
+    d.text((16, 440), f"today ${u['today_usd']:.2f}   7d ${u['week_usd']:.2f}   {u['tokens_today']} tok", font=fs, fill=BLACK)
+    nxt = f"next {screen.next_refresh_s}s"
+    d.text((W - 16 - d.textlength(nxt, font=fs), 440), nxt, font=fs, fill=BLACK)
+    return img
+
+
+def to_epd_bytes(img: Image.Image) -> bytes:
+    """Pack palette indices 2 px/byte, high nibble = left pixel, row-major from the top."""
+    px = img.tobytes()
+    return bytes((a << 4) | b for a, b in zip(px[0::2], px[1::2]))

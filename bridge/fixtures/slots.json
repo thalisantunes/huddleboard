@@ -1,0 +1,5 @@
+{"slots":[
+ {"name":"main","state":"idle","task":""},
+ {"name":"coder-1","state":"soft_pending","task":"refactor auth module"},
+ {"name":"reviewer","state":"killing","task":"review PR #42"}
+]}
