@@ -16,7 +16,8 @@ class Screen:
     next_refresh_s: int = 300
     errors: list = field(default_factory=list)  # endpoints that failed this cycle
     sessions: dict | None = None  # {waiting, working, stopped, unknown}; None = painel provider off
-    waiting_input: int = 0  # slots waiting for the human
+    waiting_input: int = 0  # recent slots waiting for the human
+    recent_input: list = field(default_factory=list)  # those slots' rows
     waiting: list = field(default_factory=list)  # up to 3 {name, minutes}, longest waiting first
 
 
@@ -158,12 +159,14 @@ def build_screen(raw: dict, updated_at: str = "", battery_v=None, next_refresh_s
         ]
     now = time.time() if now is None else now
     slots = sorted((_slot_row(sl) for sl in _items(raw.get("slots"), "slots")), key=lambda s: _PRIO.get(s["state"], 6))
+    recent = [sl for sl in slots if sl["state"] == "input" and sl["ts"] and now - sl["ts"] <= input_recent_min * 60]
     return Screen(
         updated_at=updated_at,
         approvals=_approvals(raw.get("slots"), raw.get("approvals")),
         slots=slots,
         # only recent input counts as urgent: old Slack threads can wait for a human for days
-        waiting_input=sum(1 for sl in slots if sl["state"] == "input" and sl["ts"] and now - sl["ts"] <= input_recent_min * 60),
+        waiting_input=len(recent),
+        recent_input=recent,
         # ?: "failed" is read from depth.by_state["FAILED"]; the state list is partly unconfirmed
         tasks={"running": _num(depth, "running", int), "queued": _num(depth, "queued", int),
                "failed": _num(_d(depth.get("by_state")), "FAILED", int)},
