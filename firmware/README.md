@@ -33,7 +33,9 @@ Notes for the Heltec:
 - Battery: GPIO37 is driven HIGH, 10 ms later GPIO1 is read, then GPIO37 goes low. Vbat = Vadc x 4.9.
 - Only buttons A and B wake the chip from deep sleep. Button C (GPIO3, a strapping pin) is not an
   ext1 source in this layout, so it only works while the chip is awake.
-- The OLED and the LoRa radio are never initialised. OLED_RST (GPIO21) is left floating.
+- The OLED and the LoRa radio are never initialised. OLED_RST (21), FEM_EN (2) and VFEM (7) are held LOW,
+  also in deep sleep (pin numbers from the research notes; FEM polarity not confirmed). Before Vext is cut,
+  the HAT signal pins go high-Z so the HAT is not back-powered, and ADC_Ctrl is held LOW.
 - The V4R8 keeps PSRAM disabled (the firmware does not use it). If its PSRAM is octal, GPIO33-37 may be taken
   and BUSY 34 / ADC_Ctrl 37 would clash. Not verified.
 - The SPI bus is started with explicit pins before the panel init; CS is driven by GxEPD2.

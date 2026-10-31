@@ -44,13 +44,44 @@ static void vextOn() {
 #endif
 }
 
-static void vextOff() {
+// Drives a pin LOW and latches it through deep sleep.
+static void holdLow(int pin) {
+  gpio_hold_dis((gpio_num_t)pin);
+  pinMode(pin, OUTPUT);
+  digitalWrite(pin, LOW);
+  gpio_hold_en((gpio_num_t)pin);
+}
+
+// Unused Heltec peripherals, kept off whenever the chip runs (the OLED is held in reset).
+// Pin numbers come from the research notes; FEM/VFEM polarity is NOT CONFIRMED (LOW = off assumed).
+static void parkUnusedPeripherals() {
+#ifdef OLED_RST
+  holdLow(OLED_RST);
+#endif
+#ifdef LORA_FEM_EN
+  holdLow(LORA_FEM_EN);
+#endif
+#ifdef LORA_VFEM
+  holdLow(LORA_VFEM);
+#endif
+}
+
+// Everything that could leak current into the HAT or the board while asleep.
+static void parkForSleep() {
 #ifdef VEXT
+  // Release the bus and float the HAT signals first: driven high, they would back-power the
+  // HAT through its input diodes once Vext is off. epd.init() and SPI.begin() re-drive them on wake.
+  SPI.end();
+  for (int p : {EPD_SCK, EPD_MOSI, EPD_CS, EPD_DC, EPD_RST}) pinMode(p, INPUT);  // only when Vext cuts the HAT
   pinMode(VEXT, OUTPUT);
   digitalWrite(VEXT, !VEXT_ON_LEVEL);
   gpio_hold_en((gpio_num_t)VEXT);
-  gpio_deep_sleep_hold_en();
 #endif
+#ifdef BAT_ADC_CTRL
+  holdLow(BAT_ADC_CTRL);
+#endif
+  parkUnusedPeripherals();
+  gpio_deep_sleep_hold_en();
 }
 
 static void sleepFor(uint32_t seconds) {
@@ -71,7 +102,9 @@ static void sleepFor(uint32_t seconds) {
     rtc_gpio_pulldown_dis((gpio_num_t)p);
     mask |= 1ULL << p;
   }
-  vextOff();
+  // Needed for the RTC pull-ups on the buttons to stay powered in deep sleep.
+  esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
+  parkForSleep();
   esp_sleep_enable_ext1_wakeup(mask, ESP_EXT1_WAKEUP_ANY_LOW);
   esp_sleep_enable_timer_wakeup((uint64_t)seconds * 1000000ULL);
   Serial.printf("sleep %us\n", (unsigned)seconds);
@@ -132,6 +165,7 @@ static bool openHttp(HTTPClient& http, const String& pathAndQuery) {
 
 static float readBattery() {
 #ifdef BAT_ADC_CTRL
+  gpio_hold_dis((gpio_num_t)BAT_ADC_CTRL);
   pinMode(BAT_ADC_CTRL, OUTPUT);
   digitalWrite(BAT_ADC_CTRL, BAT_ADC_CTRL_ON_LEVEL);
   delay(10);
@@ -196,6 +230,7 @@ static bool showImage(const String& imagePath) {
 void setup() {
   Serial.begin(115200);
   prefs.begin("kcd", false);
+  parkUnusedPeripherals();
 
   // Hold button A for 5 s at power-on or reset (not on a timer or button wake) to forget Wi-Fi.
   pinMode(BTN_A, INPUT_PULLUP);

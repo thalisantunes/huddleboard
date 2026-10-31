@@ -25,11 +25,12 @@ Pins come from `firmware/src/config.h`. Items marked "to confirm" were not verif
 | CS | 41 | |
 | DC | 42 | |
 | RST | 38 | |
-| BUSY | 34 | input only, low = busy |
+| BUSY | 34 | input, low = busy |
 
 GPIO38 to 42 are the GNSS header pins on this board and are free when no GNSS module is fitted.
 Vext polarity is NOT CONFIRMED: the datasheet says HIGH is on, espboards.dev says LOW. Test on the bench; the level is `VEXT_ON_LEVEL` in `platformio.ini`.
 The OLED and LoRa radio are not used and not initialised. LoRa SPI is on GPIO8 to 14 and not on the header.
+To save sleep current the firmware holds OLED_RST (21), FEM_EN (2) and VFEM (7) LOW and floats the HAT signal pins before cutting Vext. Those three pin numbers are from the research notes and the FEM polarity is NOT CONFIRMED.
 
 ### Generic ESP32-S3 example: FireBeetle 2 ESP32-S3
 
@@ -91,6 +92,13 @@ Saving tips:
 - Skip the refresh when the image hash is unchanged (the firmware already does this).
 - Panel power is switched with Vext during sleep (see wiring); keep the OLED and radio uninitialised.
 - With USB connected the board draws about 2 mA in sleep, so measure on battery.
+
+## Measure on the bench
+
+1. Vext polarity: does the panel power up with `VEXT_ON_LEVEL=1`?
+2. Sleep current on battery only (USB disconnected), with and without the OLED/FEM pins held.
+3. Buttons A and B wake the chip from deep sleep; C does not.
+4. Battery divider: compare the reported voltage with a multimeter.
 
 ## Known unknowns
 
