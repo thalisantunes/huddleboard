@@ -30,7 +30,7 @@ Configuration is via environment variables, see `bridge/kcdeck/config.py`.
 
 ## Firmware
 
-See [firmware/](firmware/).
+See [firmware/](firmware/). Hardware assembly and BOM: [docs/hardware/assembly.md](docs/hardware/assembly.md).
 
 ## License
 
